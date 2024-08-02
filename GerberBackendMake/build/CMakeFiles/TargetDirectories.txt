@@ -1,0 +1,3 @@
+C:/Users/Программист/source/repos/GerberBackend/GerberBackendMake/build/CMakeFiles/GerberToolsWrapper.dir
+C:/Users/Программист/source/repos/GerberBackend/GerberBackendMake/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Программист/source/repos/GerberBackend/GerberBackendMake/build/CMakeFiles/ZERO_CHECK.dir

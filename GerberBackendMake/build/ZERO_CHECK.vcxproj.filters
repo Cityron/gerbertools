@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\build\CMakeFiles\7acce30f4e224dc55a66b0a00daea1c3\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{80963E71-0C7F-3B17-8F54-80AA931C1FB4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

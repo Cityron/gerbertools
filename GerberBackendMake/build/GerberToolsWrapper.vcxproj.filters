@@ -1,0 +1,115 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\src\GerberToolsWrapper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\aperture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\aperture_macro.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\clipper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\coord.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\gerber.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\ncdrill.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\netlist.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\obj.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\path.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\pcb.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\plot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\pymod.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\gerbertools\src\svg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\adler32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\compress.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\crc32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\deflate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\gzclose.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\gzlib.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\gzread.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\gzwrite.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\infback.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\inffast.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\inflate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\inftrees.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\trees.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\uncompr.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\zutil.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\contrib\minizip\ioapi.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\contrib\minizip\iowin32.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\contrib\minizip\mztools.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\contrib\minizip\unzip.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\zlib-1.2.11\contrib\minizip\zip.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Программист\source\repos\GerberBackend\GerberBackendMake\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{5DC1C23F-CD12-3E85-9267-20562973BDE9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+/cmake-*/
+/build/
+/test/
+/.idea/
+/pybuild
+__pycache__/
+*.pyc

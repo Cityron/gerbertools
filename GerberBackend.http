@@ -1,0 +1,6 @@
+@GerberBackend_HostAddress = http://localhost:5144
+
+GET {{GerberBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
