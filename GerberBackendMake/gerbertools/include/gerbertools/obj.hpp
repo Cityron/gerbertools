@@ -249,7 +249,7 @@ public:
     /**
      * Writes the contained OBJ file data to a file.
      */
-    void to_file(const std::string &fname) const;
+    void to_file(std::ostringstream& stream) const;
 
 };
 

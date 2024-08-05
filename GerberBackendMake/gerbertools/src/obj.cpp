@@ -32,6 +32,12 @@
 #include "obj.hpp"
 #include "earcut.hpp"
 #include "clipper.hpp"
+#include <iostream>
+#include <sstream>
+#include <vector>
+#include <limits>
+#include <algorithm>
+#include <stdexcept>
 
 namespace gerbertools {
 namespace obj {
@@ -250,19 +256,15 @@ Object &ObjFile::add_object(const std::string &name, const std::string &material
 /**
  * Writes the contained OBJ file data to a file.
  */
-void ObjFile::to_file(const std::string &fname) const {
-    std::ofstream file(fname);
-    if (!file.is_open()) {
-        throw std::runtime_error("failed to open " + fname + " for writing");
-    }
-    for (const auto &vertex : vertices) {
-        file << "v " << vertex.at(0) << " " << vertex.at(1) << " " << vertex.at(2) << "\n";
+void ObjFile::to_file(std::ostringstream& stream) const {
+    for (const auto& vertex : vertices) {
+        stream << "v " << vertex.at(0) << " " << vertex.at(1) << " " << vertex.at(2) << "\n";
     }
     double u_min = std::numeric_limits<double>::infinity();
     double u_max = -std::numeric_limits<double>::infinity();
     double v_min = std::numeric_limits<double>::infinity();
     double v_max = -std::numeric_limits<double>::infinity();
-    for (const auto &uv : uv_coordinates) {
+    for (const auto& uv : uv_coordinates) {
         u_min = std::min(u_min, uv.at(0));
         u_max = std::max(u_max, uv.at(0));
         v_min = std::min(v_min, uv.at(1));
@@ -270,20 +272,21 @@ void ObjFile::to_file(const std::string &fname) const {
     }
     double u_scale = 1.0 / (u_max - u_min);
     double v_scale = 1.0 / (v_max - v_min);
-    for (const auto &uv : uv_coordinates) {
-        file << "vt " << (uv.at(0) - u_min) * u_scale << " " << (uv.at(1) - v_min) * v_scale << "\n";
+    for (const auto& uv : uv_coordinates) {
+        stream << "vt " << (uv.at(0) - u_min) * u_scale << " " << (uv.at(1) - v_min) * v_scale << "\n";
     }
-    for (const auto &object : objects) {
-        file << "g " << object.get_name() << "\n";
-        file << "usemtl " << object.get_material() << "\n";
-        for (const auto &face : object.get_faces()) {
-            file << "f";
-            for (const auto &corner : face) {
-                file << " " << corner.get_vertex_index() << "/" << corner.get_uv_coordinate_index();
+    for (const auto& object : objects) {
+        stream << "g " << object.get_name() << "\n";
+        stream << "usemtl " << object.get_material() << "\n";
+        for (const auto& face : object.get_faces()) {
+            stream << "f";
+            for (const auto& corner : face) {
+                stream << " " << corner.get_vertex_index() << "/" << corner.get_uv_coordinate_index();
             }
-            file << "\n";
+            stream << "\n";
         }
     }
+
 }
 
 } // namespace obj

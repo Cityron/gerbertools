@@ -48,213 +48,6 @@
 
 using namespace gerbertools;
 
-void DetermineBoardSideAndLayer(const std::string& gerberfile, BoardSide& Side, BoardLayer& Layer) {
-	Side = BoardSide::Unknown;
-	Layer = BoardLayer::Unknown;
-	std::string filename = gerberfile.substr(gerberfile.find_last_of("/\\") + 1);
-	std::string ext = filename.substr(filename.find_last_of('.') + 1);
-	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-	if (ext == "art") {
-		std::string baseName = filename.substr(0, filename.find_last_of('.'));
-		std::transform(baseName.begin(), baseName.end(), baseName.begin(), ::toupper);
-
-		if (baseName == "PMT") { Side = BoardSide::Top; Layer = BoardLayer::Paste; }
-		else if (baseName == "PMB") { Side = BoardSide::Bottom; Layer = BoardLayer::Paste; }
-		else if (baseName == "TOP") { Side = BoardSide::Top; Layer = BoardLayer::Copper; }
-		else if (baseName == "BOTTOM") { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
-		else if (baseName == "SMBOT") { Side = BoardSide::Bottom; Layer = BoardLayer::SolderMask; }
-		else if (baseName == "SMTOP") { Side = BoardSide::Top; Layer = BoardLayer::SolderMask; }
-		else if (baseName == "SSBOT") { Side = BoardSide::Bottom; Layer = BoardLayer::Silk; }
-		else if (baseName == "SSTOP") { Side = BoardSide::Top; Layer = BoardLayer::Silk; }
-		else if (baseName == "DRILLING") { Side = BoardSide::Both; Layer = BoardLayer::Drill; }
-	}
-	else if (ext == "slices") { Side = BoardSide::Both; Layer = BoardLayer::Utility; }
-	else if (ext == "copper_bottom") { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
-	else if (ext == "copper_top") { Side = BoardSide::Top; Layer = BoardLayer::Copper; }
-	else if (ext == "silk_bottom") { Side = BoardSide::Bottom; Layer = BoardLayer::Silk; }
-	else if (ext == "silk_top") { Side = BoardSide::Top; Layer = BoardLayer::Silk; }
-	else if (ext == "paste_bottom") { Side = BoardSide::Bottom; Layer = BoardLayer::Paste; }
-	else if (ext == "paste_top") { Side = BoardSide::Top; Layer = BoardLayer::Paste; }
-	else if (ext == "soldermask_bottom") { Side = BoardSide::Bottom; Layer = BoardLayer::SolderMask; }
-	else if (ext == "soldermask_top") { Side = BoardSide::Top; Layer = BoardLayer::SolderMask; }
-	else if (ext == "drill_both") { Side = BoardSide::Both; Layer = BoardLayer::Drill; }
-	else if (ext == "outline_both") { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-	else if (ext == "png") {
-		Side = BoardSide::Both;
-		Layer = BoardLayer::Silk;
-	}
-	else if (ext == "assemblytop") {
-		Layer = BoardLayer::Assembly;
-		Side = BoardSide::Top;
-	}
-	else if (ext == "assemblybottom") {
-		Layer = BoardLayer::Assembly;
-		Side = BoardSide::Bottom;
-	}
-	else if (ext == "gbr") {
-		std::string baseName = filename.substr(0, filename.find_last_of('.'));
-		std::transform(baseName.begin(), baseName.end(), baseName.begin(), ::tolower);
-
-		if (baseName == "profile" || baseName == "boardoutline" || baseName == "outline" || baseName == "board") {
-			Side = BoardSide::Both;
-			Layer = BoardLayer::Outline;
-		}
-		else if (baseName == "copper_bottom" || baseName == "bottom") {
-			Side = BoardSide::Bottom;
-			Layer = BoardLayer::Copper;
-		}
-		else if (baseName == "soldermask_bottom" || baseName == "bottommask") {
-			Side = BoardSide::Bottom;
-			Layer = BoardLayer::SolderMask;
-		}
-		else if (baseName == "solderpaste_bottom" || baseName == "bottompaste") {
-			Side = BoardSide::Bottom;
-			Layer = BoardLayer::Paste;
-		}
-		else if (baseName == "silkscreen_bottom" || baseName == "bottomsilk") {
-			Side = BoardSide::Bottom;
-			Layer = BoardLayer::Silk;
-		}
-		else if (baseName == "copper_top" || baseName == "top") {
-			Side = BoardSide::Top;
-			Layer = BoardLayer::Copper;
-		}
-		else if (baseName == "soldermask_top" || baseName == "topmask") {
-			Side = BoardSide::Top;
-			Layer = BoardLayer::SolderMask;
-		}
-		else if (baseName == "solderpaste_top" || baseName == "toppaste") {
-			Side = BoardSide::Top;
-			Layer = BoardLayer::Paste;
-		}
-		else if (baseName == "silkscreen_top" || baseName == "topsilk") {
-			Side = BoardSide::Top;
-			Layer = BoardLayer::Silk;
-		}
-		else if (baseName == "inner1") {
-			Side = BoardSide::Internal1;
-			Layer = BoardLayer::Copper;
-		}
-		else if (baseName == "inner2") {
-			Side = BoardSide::Internal2;
-			Layer = BoardLayer::Copper;
-		}
-		else {
-			std::string lcase = gerberfile;
-			std::transform(lcase.begin(), lcase.end(), lcase.begin(), ::tolower);
-			if (lcase.find("board outline") != std::string::npos) { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-			if (lcase.find("copper bottom") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
-			if (lcase.find("silkscreen bottom") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::Silk; }
-			if (lcase.find("copper top") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::Copper; }
-			if (lcase.find("silkscreen top") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::Silk; }
-			if (lcase.find("solder mask bottom") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::SolderMask; }
-			if (lcase.find("solder mask top") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::SolderMask; }
-			if (lcase.find("drill-copper top-copper bottom") != std::string::npos) { Side = BoardSide::Both; Layer = BoardLayer::Drill; }
-			if (lcase.find("outline") != std::string::npos) { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-			if (lcase.find("-edge_cuts") != std::string::npos) { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-			if (lcase.find("-b_cu") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
-			if (lcase.find("-f_cu") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::Copper; }
-			if (lcase.find("-b_silks") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::Silk; }
-			if (lcase.find("-f_silks") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::Silk; }
-			if (lcase.find("-b_mask") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::SolderMask; }
-			if (lcase.find("-f_mask") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::SolderMask; }
-			if (lcase.find("-b_paste") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::Paste; }
-			if (lcase.find("-f_paste") != std::string::npos) { Side = BoardSide::Top; Layer = BoardLayer::Paste; }
-		}
-	}
-	else if (ext == "ger") {
-		std::string l = gerberfile;
-		std::transform(l.begin(), l.end(), l.begin(), ::tolower);
-		std::vector<BoardSet> bs = {
-			{ ".topsoldermask", BoardSide::Top, BoardLayer::SolderMask },
-			{ ".topsilkscreen", BoardSide::Top, BoardLayer::Silk },
-			{ ".toplayer", BoardSide::Top, BoardLayer::Copper },
-			{ ".tcream", BoardSide::Top, BoardLayer::Paste },
-			{ ".boardoutline", BoardSide::Both, BoardLayer::Outline },
-			{ ".bcream", BoardSide::Bottom, BoardLayer::Paste },
-			{ ".bottomsoldermask", BoardSide::Bottom, BoardLayer::SolderMask },
-			{ ".bottomsilkscreen", BoardSide::Bottom, BoardLayer::Silk },
-			{ ".bottomlayer", BoardSide::Bottom, BoardLayer::Copper },
-			{ ".internalplane1", BoardSide::Internal1, BoardLayer::Copper },
-			{ ".internalplane2", BoardSide::Internal2, BoardLayer::Copper }
-		};
-
-		for (const auto& a : bs) {
-			if (l.find(a.name) != std::string::npos) {
-				Side = a.side;
-				Layer = a.layer;
-				break;
-			}
-		}
-	}
-	else if (ext == "gml") { Side = BoardSide::Both; Layer = BoardLayer::Mill; }
-	else if (ext == "fabrd" || ext == "oln" || ext == "gko" || ext == "gm1") { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-	else if (ext == "l2" || ext == "g1l" || ext == "gl1" || ext == "g1") { Side = BoardSide::Internal1; Layer = BoardLayer::Copper; }
-	else if (ext == "adtop") { Side = BoardSide::Top; Layer = BoardLayer::Assembly; }
-	else if (ext == "adbottom") { Side = BoardSide::Bottom; Layer = BoardLayer::Assembly; }
-	else if (ext == "notes") { Side = BoardSide::Both; Layer = BoardLayer::Notes; }
-	else if (ext == "l3" || ext == "gl2" || ext == "g2l" || ext == "g2") { Side = BoardSide::Internal2; Layer = BoardLayer::Copper; }
-	else if (ext == "gl3" || ext == "g3l" || ext == "g3") { Side = BoardSide::Internal3; Layer = BoardLayer::Copper; }
-	else if (ext == "gl4" || ext == "g4l" || ext == "g4") { Side = BoardSide::Internal4; Layer = BoardLayer::Copper; }
-	else if (ext == "gl5" || ext == "g5l" || ext == "g5") { Side = BoardSide::Internal5; Layer = BoardLayer::Copper; }
-	else if (ext == "gl6" || ext == "g6l" || ext == "g6") { Side = BoardSide::Internal6; Layer = BoardLayer::Copper; }
-	else if (ext == "gl7" || ext == "g7l" || ext == "g7") { Side = BoardSide::Internal7; Layer = BoardLayer::Copper; }
-	else if (ext == "gl8" || ext == "g8l" || ext == "g8") { Side = BoardSide::Internal8; Layer = BoardLayer::Copper; }
-	else if (ext == "gl9" || ext == "g9l" || ext == "g9") { Side = BoardSide::Internal9; Layer = BoardLayer::Copper; }
-	else if (ext == "gl10" || ext == "g10l" || ext == "g10") { Side = BoardSide::Internal10; Layer = BoardLayer::Copper; }
-	else if (ext == "gl11" || ext == "g11l" || ext == "g11") { Side = BoardSide::Internal11; Layer = BoardLayer::Copper; }
-	else if (ext == "gl12" || ext == "g12l" || ext == "g12") { Side = BoardSide::Internal12; Layer = BoardLayer::Copper; }
-	else if (ext == "gl13" || ext == "g13l" || ext == "g13") { Side = BoardSide::Internal13; Layer = BoardLayer::Copper; }
-	else if (ext == "gl14" || ext == "g14l" || ext == "g14") { Side = BoardSide::Internal14; Layer = BoardLayer::Copper; }
-	else if (ext == "gl15" || ext == "g15l" || ext == "g15") { Side = BoardSide::Internal15; Layer = BoardLayer::Copper; }
-	else if (ext == "gl16" || ext == "g16l" || ext == "g16") { Side = BoardSide::Internal16; Layer = BoardLayer::Copper; }
-	else if (ext == "gl17" || ext == "g17l" || ext == "g17") { Side = BoardSide::Internal17; Layer = BoardLayer::Copper; }
-	else if (ext == "gl18" || ext == "g18l" || ext == "g18") { Side = BoardSide::Internal18; Layer = BoardLayer::Copper; }
-	else if (ext == "gl19" || ext == "g19l" || ext == "g19") { Side = BoardSide::Internal19; Layer = BoardLayer::Copper; }
-	else if (ext == "gl20" || ext == "g20l" || ext == "g20") { Side = BoardSide::Internal20; Layer = BoardLayer::Copper; }
-	else if (ext == "l4" || ext == "gbl" || ext == "l2m") { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
-	else if (ext == "l1" || ext == "l1m" || ext == "gtl") { Side = BoardSide::Top; Layer = BoardLayer::Copper; }
-	else if (ext == "gbp" || ext == "spbottom") { Side = BoardSide::Bottom; Layer = BoardLayer::Paste; }
-	else if (ext == "gtp" || ext == "sptop") { Side = BoardSide::Top; Layer = BoardLayer::Paste; }
-	else if (ext == "gbo" || ext == "ss2" || ext == "ssbottom") { Side = BoardSide::Bottom; Layer = BoardLayer::Silk; }
-	else if (ext == "gto" || ext == "ss1" || ext == "sstop") { Side = BoardSide::Top; Layer = BoardLayer::Silk; }
-	else if (ext == "gbs" || ext == "sm2" || ext == "smbottom") { Side = BoardSide::Bottom; Layer = BoardLayer::SolderMask; }
-	else if (ext == "gts" || ext == "sm1" || ext == "smtop") { Side = BoardSide::Top; Layer = BoardLayer::SolderMask; }
-	else if (ext == "outline" || ext == "gb3") { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-	else if (ext == "gt3") { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
-	else if (ext == "top") { Side = BoardSide::Top; Layer = BoardLayer::Copper; }
-	else if (ext == "bottom" || ext == "bot") { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
-	else if (ext == "smb") { Side = BoardSide::Bottom; Layer = BoardLayer::SolderMask; }
-	else if (ext == "smt") { Side = BoardSide::Top; Layer = BoardLayer::SolderMask; }
-	else if (ext == "slk" || ext == "sst") { Side = BoardSide::Top; Layer = BoardLayer::Silk; }
-	else if (ext == "bsk" || ext == "ssb") { Side = BoardSide::Bottom; Layer = BoardLayer::Silk; }
-	else if (ext == "spt") { Side = BoardSide::Top; Layer = BoardLayer::Paste; }
-	else if (ext == "spb") { Side = BoardSide::Bottom; Layer = BoardLayer::Paste; }
-	else if (ext == "drill_top_bottom" || ext == "drl" || ext == "drill" || ext == "drillnpt" || ext == "rou" || ext == "sco") {
-		Side = BoardSide::Both;
-		Layer = BoardLayer::Drill;
-	}
-}
-
-BoardFileType FindFileTypeFromStream(std::ifstream& file, std::string filename) {
-	std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-	std::vector<std::string> unsupported = { "config", "exe", "dll", "png", "zip", "gif", "jpeg", "doc", "docx", "jpg", "bmp" };
-	std::string ext = filename.substr(filename.find_last_of(".") + 1);
-
-	if (std::find(unsupported.begin(), unsupported.end(), ext) != unsupported.end()) {
-		return BoardFileType::Unsupported;
-	};
-
-	std::string line;
-	while (std::getline(file, line)) {
-		if (line.find("%FS") != std::string::npos) return BoardFileType::Gerber;
-		if (line.find("M48") != std::string::npos) return BoardFileType::Drill;
-	}
-
-	return BoardFileType::Unsupported;
-}
-
 bool CreateDirectory(const std::string& path) {
 #if defined(_WIN32)
 	int ret = _mkdir(path.c_str());
@@ -344,135 +137,8 @@ bool UnzipFile(const std::string& zipFilePath, const std::string& outputDir) {
 	return true;
 }
 
-std::vector<std::string> ListFiles(const std::string& directory) {
-	std::vector<std::string> files;
-
-	for (const auto& entry : std::filesystem::recursive_directory_iterator(directory)) {
-		if (entry.is_regular_file()) {
-			files.push_back(std::filesystem::absolute(entry.path()).string());
-		}
-	}
-
-	return files;
-}
-
-std::map<std::string, std::vector<std::string>> IdentifyGerberFiles(const std::string& directory) {
-	std::map<std::string, std::vector<std::string>> gerberFiles;
-	std::vector<std::string> files = ListFiles(directory);
 
 
-	for (const auto& file : files) {
-		BoardFileType gerber = BoardFileType::Unsupported;
-		std::ifstream f1(file);
-		gerber = FindFileTypeFromStream(f1, file);
-		if (BoardFileType::Gerber == gerber) {
-			BoardSide Side;
-			BoardLayer Layer;
-			DetermineBoardSideAndLayer(file, Side, Layer);
-
-			size_t pos = file.rfind('\\');
-			pos = file.rfind('\\', pos - 1);
-			std::string result = file.substr(pos);
-
-			if (BoardLayer::Copper == Layer && BoardSide::Top == Side) {
-				gerberFiles["topCopper"].push_back(result);
-			}
-			else if (BoardLayer::Copper == Layer && BoardSide::Bottom == Side) {
-				gerberFiles["bottomCopper"].push_back(result);
-			}
-			else if (BoardLayer::SolderMask == Layer && BoardSide::Top == Side) {
-				gerberFiles["topMask"].push_back(result);
-			}
-			else if (BoardLayer::SolderMask == Layer && BoardSide::Bottom == Side) {
-				gerberFiles["bottomMask"].push_back(result);
-			}
-			else if (BoardLayer::Silk == Layer && BoardSide::Top == Side) {
-				gerberFiles["topSilk"].push_back(result);
-			}
-			else if (BoardLayer::Silk == Layer && BoardSide::Bottom == Side) {
-				gerberFiles["bottomSilk"].push_back(result);
-			}
-			else if (BoardLayer::Drill == Layer && BoardSide::Both == Side) {
-				gerberFiles["drill"].push_back(result);
-			}
-			else if (BoardLayer::Mill == Layer && BoardSide::Both == Side) {
-				gerberFiles["mill"].push_back(result);
-			}
-			else if (BoardLayer::Outline == Layer && BoardSide::Both == Side) {
-				gerberFiles["outline"].push_back(result);
-			}
-		}
-		else if (BoardFileType::Drill == gerber) {
-			size_t pos = file.rfind('\\');
-			pos = file.rfind('\\', pos - 1);
-			std::string result = file.substr(pos);
-			gerberFiles["drill"].push_back(result);
-		}
-		f1.close();
-	}
-	return gerberFiles;
-
-}
-
-color::Color CreateColor(float r, float g, float b, float a) {
-	color::Color color;
-	color.r = r;
-	color.g = g;
-	color.b = b;
-	color.a = a;
-	return color;
-}
-
-
-pcb::CircuitBoard LoadPCB(const std::string& directory) {
-	auto start = std::chrono::system_clock::now();
-
-
-	std::cout
-		<< "elapsed time: " << start.max << "s"
-		<< std::endl;
-	auto gerberFiles = IdentifyGerberFiles(directory);
-	if (gerberFiles.empty()) {
-		throw std::runtime_error("No gerber file");
-	}
-	auto end = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds1 = end - start;
-
-	std::cout
-		<< "elapsed time1: " << elapsed_seconds1.count() << "s"
-		<< std::endl;
-
-	std::string basename = directory;
-	std::string outline = gerberFiles["outline"].front();
-	std::vector<std::string> drill = gerberFiles["drill"];
-	std::string drill_nonplated = "";
-	std::string mill = "";
-	double plating_thickness = 0.5 * pcb::COPPER_OZ;
-	// Создание объекта CircuitBoard
-	pcb::CircuitBoard board(basename, outline, drill, drill_nonplated, mill, plating_thickness);
-
-	// Добавление слоев
-
-	if (!gerberFiles["bottomMask"].empty()) {
-		board.add_mask_layer(gerberFiles["bottomMask"].front(), gerberFiles["bottomSilk"].front());
-	}
-	if (!gerberFiles["bottomCopper"].empty()) {
-		board.add_copper_layer(gerberFiles["bottomCopper"].front(), pcb::COPPER_OZ);
-	}
-	board.add_substrate_layer(1.5);
-	if (!gerberFiles["topCopper"].empty()) {
-		board.add_copper_layer(gerberFiles["topCopper"].front(), pcb::COPPER_OZ);
-	}
-	if (!gerberFiles["topMask"].empty()) {
-		board.add_mask_layer(gerberFiles["topMask"].front(), gerberFiles["topSilk"].front());
-	}
-
-	board.add_surface_finish();
-	gerberFiles.clear();
-
-
-	return board;
-}
 
 int main(int argc, char* argv[]) {
 	auto start = std::chrono::system_clock::now();
@@ -508,9 +174,14 @@ int main(int argc, char* argv[]) {
 	// Рендеринг SVG для передней и задней стороны платы
 	std::string frontSVGPath = outputDir + "/front.svg";
 	std::string backSVGPath = outputDir + "/back.svg";
-	pcb::CircuitBoard pcb = LoadPCB(outputDir);
+	std::string mtlPath = outputDir + "/output.mtl";
+	std::string objPath = outputDir + "/output.obj";
+	std::string obj = "output.mtl";
+	pcb::CircuitBoard pcb = pcb::CircuitBoard::LoadPCB(outputDir);
 	std::ostringstream strm_front;
 	std::ostringstream strm_back;
+	std::ostringstream strm_mtl;
+	std::ostringstream strm_obj;
 
 	auto end2 = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds2 = end2 - end1;
@@ -526,11 +197,11 @@ int main(int argc, char* argv[]) {
 		<< round(coord::Format::to_mm(coordinates.top) - coord::Format::to_mm(coordinates.bottom)) << std::endl;
 
 	// Запись SVG файла
-	std::string result_write_svg_front = pcb.write_svg(strm_front, false, 2.0);
+	pcb.write_svg(strm_front, false, 2.0);
 
 	std::ofstream file_front(frontSVGPath);
 	if (file_front.is_open()) {
-		file_front << result_write_svg_front;
+		file_front << strm_front.str();
 		file_front.close();
 	}
 
@@ -542,11 +213,11 @@ int main(int argc, char* argv[]) {
 	std::cout
 		<< "frontSVGPath: " << elapsed_seconds3.count() << "s"
 		<< std::endl;
-	std::string result_write_svg_back = pcb.write_svg(strm_back, true, 2.0);
+	pcb.write_svg(strm_back, true, 2.0);
 
 	std::ofstream file_back(backSVGPath);
 	if (file_back.is_open()) {
-		file_back << result_write_svg_back;
+		file_back << strm_back.str();
 		file_back.close();
 	}
 
@@ -558,7 +229,24 @@ int main(int argc, char* argv[]) {
 	std::cout
 		<< "backSVGPath: " << elapsed_seconds4.count() << "s"
 		<< std::endl;
-	pcb.write_obj(outputDir + "/output.obj");
+
+	pcb.generate_mtl_file(strm_mtl);
+	std::ofstream file_mtl(mtlPath);
+	if (file_mtl.is_open()) {
+		file_mtl << strm_mtl.str();
+		file_mtl.close();
+	}
+
+
+	pcb.write_obj(strm_obj);
+
+	std::ofstream file_obj(objPath);
+	if (file_obj.is_open()) {
+		file_obj << "mtllib " << obj << "\n";
+		file_obj << strm_obj.str();
+		file_obj.close();
+	}
+
 	auto end5 = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds5 = end5 - end4;
 

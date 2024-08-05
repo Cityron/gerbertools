@@ -38,6 +38,7 @@
 #include "obj.hpp"
 #include "netlist.hpp"
 #include "ncdrill.hpp"
+#include "../src/BoardEnumTypes.h"
 
 namespace gerbertools {
 
@@ -327,6 +328,32 @@ namespace gerbertools {
 
 		};
 
+		class BoardSideAndLayer {
+		private:
+			std::string Gerberfile;
+			BoardSide Side;
+			BoardLayer Layer;
+
+		public:
+			BoardSideAndLayer(const std::string& gerberfile, BoardSide side, BoardLayer layer)
+				: Gerberfile(gerberfile), Side(side), Layer(layer) {};
+
+			void DetermineBoardSideAndLayer();
+			BoardSide getSide() const { return Side; }
+			BoardLayer getLayer() const { return Layer; }
+
+			~BoardSideAndLayer()
+			{
+
+			}
+		};
+
+		class FileType {
+		public:
+			BoardFileType FindFileTypeFromStream(std::ifstream& file, const std::string& filename);
+			std::map<std::string, std::vector<std::string>> IdentifyGerberFiles(const std::string& directory);
+		};
+
 		/**
 		 * Represents a circuit board.
 		 */
@@ -442,6 +469,8 @@ namespace gerbertools {
 				double plating_thickness = 0.5 * COPPER_OZ
 			);
 
+			static CircuitBoard LoadPCB(const std::string& directory);
+
 			/**
 			 * Adds a mask layer to the board. Layers are added bottom-up.
 			 */
@@ -461,6 +490,8 @@ namespace gerbertools {
 			 * Derives the surface finish layer for all exposed copper.
 			 */
 			void add_surface_finish();
+
+			void generate_mtl_file(std::ostringstream& stream) const;
 
 			/**
 			 * Returns a netlist builder initialized with the vias and copper regions of
@@ -487,7 +518,7 @@ namespace gerbertools {
 			/**
 			 * Renders the circuit board to an SVG.
 			 */
-			std::string write_svg(std::ostringstream& stream,
+			void write_svg(std::ostringstream& stream,
 				bool flipped,
 				double scale,
 				const ColorScheme& colors = {}) const;
@@ -497,7 +528,7 @@ namespace gerbertools {
 			 * can be supplied, of which the logical net names will then be used to
 			 * name the copper objects.
 			 */
-			void write_obj(const std::string& fname, const netlist::Netlist* netlist = nullptr) const;
+			void write_obj(std::ostringstream& stream, const netlist::Netlist* netlist = nullptr) const;
 
 		};
 
