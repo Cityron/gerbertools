@@ -180,6 +180,7 @@ DocProject/Help/html
 publish/
 
 build/
+out/
 
 # Publish Web Output
 *.[Pp]ublish.xml

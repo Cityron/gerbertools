@@ -9,8 +9,8 @@
 #include <iomanip>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include "zlib.h" // Основной заголовочный файл zlib
-#include "contrib/minizip/unzip.h" // Заголовочный файл MiniZip для работы с zip-архивами
+#include "zlib.h" 
+#include "unzip.h" 
 #include "aperture.hpp"
 #include "aperture_macro.hpp"
 #include "clipper.hpp"
@@ -246,15 +246,10 @@ BoardFileType FindFileTypeFromStream(std::ifstream& file, std::string filename) 
 		return BoardFileType::Unsupported;
 	};
 
-	try {
-		std::string line;
-		while (std::getline(file, line)) {
-			if (line.find("%FS") != std::string::npos) return BoardFileType::Gerber;
-			if (line.find("M48") != std::string::npos) return BoardFileType::Drill;
-		}
-	}
-	catch (const std::exception&) {
-		return BoardFileType::Unsupported;
+	std::string line;
+	while (std::getline(file, line)) {
+		if (line.find("%FS") != std::string::npos) return BoardFileType::Gerber;
+		if (line.find("M48") != std::string::npos) return BoardFileType::Drill;
 	}
 
 	return BoardFileType::Unsupported;
@@ -430,10 +425,22 @@ color::Color CreateColor(float r, float g, float b, float a) {
 
 
 pcb::CircuitBoard LoadPCB(const std::string& directory) {
+	auto start = std::chrono::system_clock::now();
+
+
+	std::cout
+		<< "elapsed time: " << start.max << "s"
+		<< std::endl;
 	auto gerberFiles = IdentifyGerberFiles(directory);
 	if (gerberFiles.empty()) {
 		throw std::runtime_error("No gerber file");
 	}
+	auto end = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds1 = end - start;
+
+	std::cout
+		<< "elapsed time1: " << elapsed_seconds1.count() << "s"
+		<< std::endl;
 
 	std::string basename = directory;
 	std::string outline = gerberFiles["outline"].front();
@@ -468,44 +475,86 @@ pcb::CircuitBoard LoadPCB(const std::string& directory) {
 }
 
 int main(int argc, char* argv[]) {
-	try {
-		std::string zipFilePath = argv[1];
-		std::string outputDir = argv[2];
 
-		// Создаем директорию для выходных данных, если она не существует
-		if (!CreateDirectory(outputDir)) {
-			throw std::runtime_error("Не удалось создать директорию для выходных данных.");
-		}
+	auto start = std::chrono::system_clock::now();
+	auto end = std::chrono::system_clock::now();
 
-		// Распаковка zip архива
-		if (!UnzipFile(zipFilePath, outputDir)) {
-			throw std::runtime_error("Не удалось распаковать zip архив.");
-		}
+	std::chrono::duration<double> elapsed_seconds = end - start;
+	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
 
-		// Рендеринг SVG для передней и задней стороны платы
-		std::string frontSVGPath = outputDir + "/front.svg";
-		std::string backSVGPath = outputDir + "/back.svg";
-		pcb::CircuitBoard pcb = LoadPCB(outputDir);
+	std::cout
+		<< "elapsed time: " << start.max << "s"
+		<< std::endl;
 
-		auto coordinates = pcb.get_bounds();
+	std::string zipFilePath = argv[1];
+	std::string outputDir = argv[2];
 
-		std::cout << std::fixed << std::setprecision(3)
-			<< round(coord::Format::to_mm(coordinates.right) - coord::Format::to_mm(coordinates.left)) << ","
-			<< round(coord::Format::to_mm(coordinates.top) - coord::Format::to_mm(coordinates.bottom)) << std::endl;
-
-		// Запись SVG файла
-		pcb.write_svg(frontSVGPath, false, 2.0);
-		pcb.write_svg(backSVGPath, true, 2.0);
-		pcb.write_obj(outputDir + "/output.obj");
-
-
-
-		std::cout << "All task complited" << std::endl;
+	// Создаем директорию для выходных данных, если она не существует
+	if (!CreateDirectory(outputDir)) {
+		throw std::runtime_error("Не удалось создать директорию для выходных данных.");
 	}
-	catch (const std::exception& e) {
-		std::cerr << "Ошибка: " << e.what() << std::endl;
-		return 1;
+
+	// Распаковка zip архива
+	if (!UnzipFile(zipFilePath, outputDir)) {
+		throw std::runtime_error("Не удалось распаковать zip архив.");
 	}
+
+	auto end1 = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds1 = end1 - start;
+
+	std::cout
+		<< "zip: " << elapsed_seconds1.count() << "s"
+		<< std::endl;
+
+	// Рендеринг SVG для передней и задней стороны платы
+	std::string frontSVGPath = outputDir + "/front.svg";
+	std::string backSVGPath = outputDir + "/back.svg";
+	pcb::CircuitBoard pcb = LoadPCB(outputDir);
+
+	auto end2 = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds2 = end2 - end1;
+
+	std::cout
+		<< "LoadPCB: " << elapsed_seconds2.count() << "s"
+		<< std::endl;
+
+	auto coordinates = pcb.get_bounds();
+
+	std::cout << std::fixed << std::setprecision(3)
+		<< round(coord::Format::to_mm(coordinates.right) - coord::Format::to_mm(coordinates.left)) << ","
+		<< round(coord::Format::to_mm(coordinates.top) - coord::Format::to_mm(coordinates.bottom)) << std::endl;
+
+	// Запись SVG файла
+	pcb.write_svg(frontSVGPath, false, 2.0);
+	auto end3 = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds3 = end3 - end2;
+
+	std::cout
+		<< "frontSVGPath: " << elapsed_seconds3.count() << "s"
+		<< std::endl;
+	pcb.write_svg(backSVGPath, true, 2.0);
+	auto end4 = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds4 = end4 - end3;
+
+	std::cout
+		<< "backSVGPath: " << elapsed_seconds4.count() << "s"
+		<< std::endl;
+	pcb.write_obj(outputDir + "/output.obj");
+	auto end5 = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds5 = end5 - end4;
+
+	std::cout
+		<< "obj: " << elapsed_seconds5.count() << "s"
+		<< std::endl;
+
+
+	auto end6 = std::chrono::system_clock::now();
+	std::chrono::duration<double> elapsed_seconds6 = end6 - start;
+
+	std::cout
+		<< "obj: " << elapsed_seconds6.count() << "s"
+		<< std::endl;
+	std::cout << "All task complited" << std::endl;
 
 	return 0;
 }
