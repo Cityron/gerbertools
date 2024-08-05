@@ -162,7 +162,7 @@ CInt Format::parse_float(const std::string &s) const {
  */
 CInt Format::to_fixed(double d) const {
     try_to_use();
-    return std::round(d * factor * 1e10);
+    return std::round(d * factor * 1e6);
 }
 
 /**
@@ -190,14 +190,14 @@ ClipperLib::ClipperOffset Format::build_clipper_offset() const {
  * Converts millimeters to the internal 64-bit CInt representation.
  */
 CInt Format::from_mm(double i) {
-    return (CInt)std::round(i * 1e10);
+    return (CInt)std::round(i * 1e6);
 }
 
 /**
  * Converts the internal 64-bit CInt representation to millimeters.
  */
 double Format::to_mm(CInt i) {
-    return i / 1e10;
+    return i / 1e6;
 }
 
 } // namespace coord

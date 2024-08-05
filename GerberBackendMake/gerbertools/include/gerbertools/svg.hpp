@@ -132,6 +132,8 @@ public:
      */
     File(const std::string &fname, const coord::CRect &bounds, double scale=1.0);
 
+    File(std::ostringstream& fname, const coord::CRect& bounds, double scale);
+
     /**
      * Destroys this SVG writer, finishing the SVG first.
      */

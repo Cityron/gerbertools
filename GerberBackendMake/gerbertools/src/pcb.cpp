@@ -526,30 +526,36 @@ std::string CircuitBoard::get_svg(bool flipped, const ColorScheme &colors, const
 /**
  * Renders the circuit board to an SVG.
  */
-void CircuitBoard::write_svg(
-    const std::string &fname,
+std::string CircuitBoard::write_svg(
+    std::ostringstream& stream,
     bool flipped,
     double scale,
-    const ColorScheme &colors
+    const ColorScheme& colors
 ) const {
     auto bounds = get_bounds();
 
     auto width = bounds.right - bounds.left + coord::Format::from_mm(20.0);
     auto height = bounds.top - bounds.bottom + coord::Format::from_mm(20.0);
-    svg::File svg{fname, {0, 0, width, height}, scale};
 
-    std::ostringstream strm;
+
+    stream << "<svg viewBox=\"0 0 " << coord::Format::to_mm(width) << " " << coord::Format::to_mm(height) << "\"";
+    stream << " width=\"" << coord::Format::to_mm(width) * scale << "\" height=\"" << coord::Format::to_mm(height) * scale << "\"";
+    stream << " xmlns=\"http://www.w3.org/2000/svg\">\n";
+
     auto tx = coord::Format::from_mm(10.0) - (flipped ? -bounds.right : bounds.left);
     auto ty = coord::Format::from_mm(10.0) + bounds.top;
-    strm << "<g transform=\"";
-    strm << "translate(" << coord::Format::to_mm(tx) << " " << coord::Format::to_mm(ty) << ") ";
-    strm << "scale(" << (flipped ? "-1" : "1") << " -1) ";
-    strm << "\" filter=\"drop-shadow(0 0 1 rgba(0, 0, 0, 0.2))\">\n";
-    svg.add(strm.str());
 
-    svg << get_svg(flipped, colors);
+    stream << "<g transform=\"";
+    stream << "translate(" << coord::Format::to_mm(tx) << " " << coord::Format::to_mm(ty) << ") ";
+    stream << "scale(" << (flipped ? "-1" : "1") << " -1) ";
+    stream << "\" filter=\"drop-shadow(0 0 1 rgba(0, 0, 0, 0.2))\">\n";
 
-    svg << "</g>\n";
+    stream << get_svg(flipped, colors);
+
+    stream << "</g>\n";
+    stream << "</svg>\n";
+
+    return stream.str();
 }
 
 /**

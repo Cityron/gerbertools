@@ -125,6 +125,18 @@ File::File(const std::string &fname, const coord::CRect &bounds, double scale) :
     data << " xmlns=\"http://www.w3.org/2000/svg\">\n";
 }
 
+File::File(std::ostringstream& stream, const coord::CRect& bounds, double scale)
+{
+    auto min_x = coord::Format::to_mm(bounds.left);
+    auto min_y = coord::Format::to_mm(bounds.top);
+    auto width = coord::Format::to_mm(bounds.right - bounds.left);
+    auto height = coord::Format::to_mm(bounds.bottom - bounds.top);
+
+    stream << "<svg viewBox=\"" << min_x << " " << min_y << " " << width << " " << height << "\"";
+    stream << " width=\"" << width * scale << "\" height=\"" << height * scale << "\"";
+    stream << " xmlns=\"http://www.w3.org/2000/svg\">\n";
+}
+
 /**
  * Destroys this SVG writer, finishing the SVG first.
  */

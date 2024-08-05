@@ -475,7 +475,6 @@ pcb::CircuitBoard LoadPCB(const std::string& directory) {
 }
 
 int main(int argc, char* argv[]) {
-
 	auto start = std::chrono::system_clock::now();
 	auto end = std::chrono::system_clock::now();
 
@@ -510,6 +509,8 @@ int main(int argc, char* argv[]) {
 	std::string frontSVGPath = outputDir + "/front.svg";
 	std::string backSVGPath = outputDir + "/back.svg";
 	pcb::CircuitBoard pcb = LoadPCB(outputDir);
+	std::ostringstream strm_front;
+	std::ostringstream strm_back;
 
 	auto end2 = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds2 = end2 - end1;
@@ -525,14 +526,32 @@ int main(int argc, char* argv[]) {
 		<< round(coord::Format::to_mm(coordinates.top) - coord::Format::to_mm(coordinates.bottom)) << std::endl;
 
 	// Запись SVG файла
-	pcb.write_svg(frontSVGPath, false, 2.0);
+	std::string result_write_svg_front = pcb.write_svg(strm_front, false, 2.0);
+
+	std::ofstream file_front(frontSVGPath);
+	if (file_front.is_open()) {
+		file_front << result_write_svg_front;
+		file_front.close();
+	}
+
+	strm_front.clear();
+
 	auto end3 = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds3 = end3 - end2;
 
 	std::cout
 		<< "frontSVGPath: " << elapsed_seconds3.count() << "s"
 		<< std::endl;
-	pcb.write_svg(backSVGPath, true, 2.0);
+	std::string result_write_svg_back = pcb.write_svg(strm_back, true, 2.0);
+
+	std::ofstream file_back(backSVGPath);
+	if (file_back.is_open()) {
+		file_back << result_write_svg_back;
+		file_back.close();
+	}
+
+	strm_back.clear();
+
 	auto end4 = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds4 = end4 - end3;
 
@@ -546,7 +565,6 @@ int main(int argc, char* argv[]) {
 	std::cout
 		<< "obj: " << elapsed_seconds5.count() << "s"
 		<< std::endl;
-
 
 	auto end6 = std::chrono::system_clock::now();
 	std::chrono::duration<double> elapsed_seconds6 = end6 - start;
