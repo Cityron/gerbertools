@@ -600,7 +600,7 @@ bool Gerber::command(const std::string &cmd, bool is_attrib) {
         }
 
     }
-    throw std::runtime_error("unknown command: " + cmd);
+    /*throw std::runtime_error("unknown command: " + cmd);*/
 }
 
 /**

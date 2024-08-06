@@ -330,28 +330,41 @@ namespace gerbertools {
 
 		class BoardSideAndLayer {
 		private:
-			std::string Gerberfile;
+			std::string GerberFile;
 			BoardSide Side;
 			BoardLayer Layer;
 
 		public:
-			BoardSideAndLayer(const std::string& gerberfile, BoardSide side, BoardLayer layer)
-				: Gerberfile(gerberfile), Side(side), Layer(layer) {};
+			BoardSideAndLayer(std::string gerberfile, BoardSide side, BoardLayer layer)
+				: GerberFile(gerberfile), Side(side), Layer(layer) {}
 
 			void DetermineBoardSideAndLayer();
 			BoardSide getSide() const { return Side; }
 			BoardLayer getLayer() const { return Layer; }
 
-			~BoardSideAndLayer()
-			{
+			~BoardSideAndLayer() {}
+		};
 
-			}
+		class GerberFile {
+		private:
+			std::string fileName;
+			std::string file;
+			BoardFileType type;
+
+		public:
+			GerberFile(std::string fileName,
+				std::string file,
+				BoardFileType type) : fileName(fileName), file(file), type(type) {}
+
+			BoardFileType getFileType() const { return type; };
+			std::string getChar() const { return file; }
+			std::string getFileName() const {return fileName;}
 		};
 
 		class FileType {
 		public:
-			BoardFileType FindFileTypeFromStream(std::ifstream& file, const std::string& filename);
-			std::map<std::string, std::vector<std::string>> IdentifyGerberFiles(const std::string& directory);
+			BoardFileType FileType::FindFileTypeFromStream(std::istream& file, const std::string& filename);
+			std::map<std::string, std::vector<std::string>> IdentifyGerberFiles(std::vector<pcb::GerberFile>& files);
 		};
 
 		/**
@@ -425,12 +438,13 @@ namespace gerbertools {
 			/**
 			 * Returns an open file input stream for the given filename.
 			 */
-			std::ifstream read_file(const std::string& fname);
+			std::istringstream read_file(const std::string& buffer);
 
 			/**
 			 * Reads a Gerber file.
 			 */
 			coord::Paths read_gerber(const std::string& fname, bool outline = false);
+
 
 			/**
 			 * Reads an NC drill file.
@@ -451,35 +465,35 @@ namespace gerbertools {
 			 *    Interpreted in the same way as outline.
 			 *  - plating_thickness: thickness of the hole plating in millimeters.
 			 */
-			CircuitBoard(
-				const std::string& basename,
-				const std::string& outline,
-				const std::string& drill,
-				const std::string& drill_nonplated = "",
-				const std::string& mill = "",
-				double plating_thickness = 0.5 * COPPER_OZ
-			);
+			//CircuitBoard(
+			//	const std::string& basename,
+			//	const std::string& outline,
+			//	const std::string& drill,
+			//	const std::string& drill_nonplated = "",
+			//	const std::string& mill = "",
+			//	double plating_thickness = 0.5 * COPPER_OZ
+			//);
 
 			CircuitBoard(
 				const std::string& basename,
-				const std::string& outline,
-				const std::vector<std::string> drill,
-				const std::string& drill_nonplated = "",
-				const std::string& mill = "",
+				std::string& outline,
+				std::vector<std::string>& drill,
+				std::string& drill_nonplated,
+				std::string& mill,
 				double plating_thickness = 0.5 * COPPER_OZ
 			);
 
-			static CircuitBoard LoadPCB(const std::string& directory);
+			static CircuitBoard LoadPCB(std::vector<pcb::GerberFile>& files);
 
 			/**
 			 * Adds a mask layer to the board. Layers are added bottom-up.
 			 */
-			void add_mask_layer(const std::string& mask, const std::string& silk = "");
+			void add_mask_layer(std::string& mask, const std::string& silk);
 
 			/**
 			 * Adds a copper layer to the board. Layers are added bottom-up.
 			 */
-			void add_copper_layer(const std::string& gerber, double thickness = COPPER_OZ);
+			void add_copper_layer(std::string& gerber, double thickness = COPPER_OZ);
 
 			/**
 			 * Adds a substrate layer. Layers are added bottom-up.

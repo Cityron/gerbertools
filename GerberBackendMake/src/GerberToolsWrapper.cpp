@@ -30,8 +30,8 @@
 #include <stack>
 #include <filesystem>
 #include "BoardEnumTypes.h"
+#include "ProcessingContext.cpp"
 
-// Для системных вызовов для работы с директориями
 #if defined(_WIN32)
 #include <direct.h>
 #include <io.h>
@@ -48,23 +48,24 @@
 
 using namespace gerbertools;
 
-bool CreateDirectory(const std::string& path) {
-#if defined(_WIN32)
-	int ret = _mkdir(path.c_str());
-#else
-	mode_t mode = 0755;
-	int ret = mkdir(path.c_str(), mode);
-#endif
-	if (ret == 0 || errno == EEXIST) {
-		return true;
+
+void createGzipFromVector(const std::vector<std::pair<std::string, std::string>>& dataVec, const std::string& filename) {
+	gzFile gzfile = gzopen(filename.c_str(), "wb");
+	if (!gzfile) {
+		throw std::runtime_error("Не удалось открыть файл для записи gzip: " + filename);
 	}
-	else {
-		std::cerr << "Не удалось создать директорию: " << path << std::endl;
-		return false;
+
+	for (const auto& [data, fileName] : dataVec) {
+		gzprintf(gzfile, "%s\n", fileName.c_str());
+		if (gzwrite(gzfile, data.data(), data.size()) == 0) {
+			gzclose(gzfile);
+			throw std::runtime_error("Ошибка записи в gzip файл: " + filename);
+		}
 	}
+	gzclose(gzfile);
 }
 
-bool UnzipFile(const std::string& zipFilePath, const std::string& outputDir) {
+bool UnzipFile(const std::string& zipFilePath, std::vector<pcb::GerberFile>& filesGerber) {
 	unzFile zipfile = unzOpen(zipFilePath.c_str());
 	if (!zipfile) {
 		std::cerr << "Не удалось открыть zip архив." << std::endl;
@@ -77,6 +78,8 @@ bool UnzipFile(const std::string& zipFilePath, const std::string& outputDir) {
 		return false;
 	}
 
+	pcb::FileType type;
+
 	do {
 		char filename_inzip[256];
 		unz_file_info file_info;
@@ -86,183 +89,105 @@ bool UnzipFile(const std::string& zipFilePath, const std::string& outputDir) {
 			return false;
 		}
 
-		std::string full_path = outputDir + "/" + filename_inzip;
-		const size_t last_slash_idx = full_path.rfind('/');
-		if (std::string::npos != last_slash_idx) {
-			std::string dir = full_path.substr(0, last_slash_idx);
-			if (!CreateDirectory(dir)) {
-				std::cerr << "Не удалось создать директорию: " << dir << std::endl;
-				unzClose(zipfile);
-				return false;
-			}
-		}
-
 		if (unzOpenCurrentFile(zipfile) != UNZ_OK) {
 			std::cerr << "Не удалось открыть текущий файл." << std::endl;
 			unzClose(zipfile);
 			return false;
 		}
 
-		FILE* fout;
-		if (fopen_s(&fout, full_path.c_str(), "wb") != 0) {
-			std::cerr << "Не удалось создать файл для записи." << std::endl;
+		std::string file_data;
+		file_data.resize(file_info.uncompressed_size);
+
+		int error = unzReadCurrentFile(zipfile, &file_data[0], file_info.uncompressed_size);
+		if (error < 0) {
+			std::cerr << "Ошибка при чтении файла." << std::endl;
 			unzCloseCurrentFile(zipfile);
 			unzClose(zipfile);
 			return false;
 		}
 
-		int error = UNZ_OK;
-		do {
-			char buffer[8192];
-			error = unzReadCurrentFile(zipfile, buffer, sizeof(buffer));
-			if (error < 0) {
-				std::cerr << "Ошибка при чтении файла." << std::endl;
-				fclose(fout);
-				unzCloseCurrentFile(zipfile);
-				unzClose(zipfile);
-				return false;
-			}
+		std::string filename_str(filename_inzip);
+		std::string file_name = filename_str.substr(filename_str.find_last_of("/\\") + 1);
 
-			if (error > 0) {
-				fwrite(buffer, error, 1, fout);
-			}
-		} while (error > 0);
+		std::istringstream file_stream(file_data);
+		auto filetype = type.FindFileTypeFromStream(file_stream, file_name);
 
-		fclose(fout);
+		if (filetype == BoardFileType::Gerber) {
+			pcb::GerberFile gerberFile(file_name, std::move(file_data), BoardFileType::Gerber);
+			filesGerber.push_back(gerberFile);
+		}
+		else if (filetype == BoardFileType::Drill) {
+			pcb::GerberFile gerberFile(file_name, std::move(file_data), BoardFileType::Drill);
+			filesGerber.push_back(gerberFile);
+		}
+
 		unzCloseCurrentFile(zipfile);
 
 	} while (unzGoToNextFile(zipfile) == UNZ_OK);
 
 	unzClose(zipfile);
+
 	return true;
 }
 
+void processPCBFiles(const std::string& zipFilePath, const std::string& outputDir) {
+	std::vector<pcb::GerberFile> filesGerber;
+	std::vector<std::pair<std::string, std::string>> svgData;
+	std::string gzipFilename = outputDir + "/svg_data.gz";
 
+	std::ostringstream strm_front;
+	std::ostringstream strm_back;
 
-
-int main(int argc, char* argv[]) {
-	auto start = std::chrono::system_clock::now();
-	auto end = std::chrono::system_clock::now();
-
-	std::chrono::duration<double> elapsed_seconds = end - start;
-	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-
-	std::cout
-		<< "elapsed time: " << start.max << "s"
-		<< std::endl;
-
-	std::string zipFilePath = argv[1];
-	std::string outputDir = argv[2];
-
-	// Создаем директорию для выходных данных, если она не существует
-	if (!CreateDirectory(outputDir)) {
-		throw std::runtime_error("Не удалось создать директорию для выходных данных.");
-	}
-
-	// Распаковка zip архива
-	if (!UnzipFile(zipFilePath, outputDir)) {
+	if (!UnzipFile(zipFilePath, filesGerber)) {
 		throw std::runtime_error("Не удалось распаковать zip архив.");
 	}
 
-	auto end1 = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds1 = end1 - start;
+	auto pcb = pcb::CircuitBoard::LoadPCB(filesGerber);
 
-	std::cout
-		<< "zip: " << elapsed_seconds1.count() << "s"
-		<< std::endl;
+	pcb.write_svg(strm_front, false, 2.0);
+	pcb.write_svg(strm_back, true, 2.0);
 
-	// Рендеринг SVG для передней и задней стороны платы
-	std::string frontSVGPath = outputDir + "/front.svg";
-	std::string backSVGPath = outputDir + "/back.svg";
-	std::string mtlPath = outputDir + "/output.mtl";
-	std::string objPath = outputDir + "/output.obj";
-	std::string obj = "output.mtl";
-	pcb::CircuitBoard pcb = pcb::CircuitBoard::LoadPCB(outputDir);
-	std::ostringstream strm_front;
-	std::ostringstream strm_back;
+	svgData.push_back({ strm_front.str(), "front.svg" });
+	svgData.push_back({ strm_back.str(), "back.svg" });
+
+	createGzipFromVector(svgData, gzipFilename);
+}
+
+void generateMTLAndOBJFiles(const std::string& zipFilePath, const std::string& outputDir) {
+	std::vector<pcb::GerberFile> filesGerber;
+	std::vector<std::pair<std::string, std::string>> objData;
 	std::ostringstream strm_mtl;
 	std::ostringstream strm_obj;
 
-	auto end2 = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds2 = end2 - end1;
-
-	std::cout
-		<< "LoadPCB: " << elapsed_seconds2.count() << "s"
-		<< std::endl;
-
-	auto coordinates = pcb.get_bounds();
-
-	std::cout << std::fixed << std::setprecision(3)
-		<< round(coord::Format::to_mm(coordinates.right) - coord::Format::to_mm(coordinates.left)) << ","
-		<< round(coord::Format::to_mm(coordinates.top) - coord::Format::to_mm(coordinates.bottom)) << std::endl;
-
-	// Запись SVG файла
-	pcb.write_svg(strm_front, false, 2.0);
-
-	std::ofstream file_front(frontSVGPath);
-	if (file_front.is_open()) {
-		file_front << strm_front.str();
-		file_front.close();
+	if (!UnzipFile(zipFilePath, filesGerber)) {
+		throw std::runtime_error("Не удалось распаковать zip архив.");
 	}
 
-	strm_front.clear();
-
-	auto end3 = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds3 = end3 - end2;
-
-	std::cout
-		<< "frontSVGPath: " << elapsed_seconds3.count() << "s"
-		<< std::endl;
-	pcb.write_svg(strm_back, true, 2.0);
-
-	std::ofstream file_back(backSVGPath);
-	if (file_back.is_open()) {
-		file_back << strm_back.str();
-		file_back.close();
-	}
-
-	strm_back.clear();
-
-	auto end4 = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds4 = end4 - end3;
-
-	std::cout
-		<< "backSVGPath: " << elapsed_seconds4.count() << "s"
-		<< std::endl;
+	auto pcb = pcb::CircuitBoard::LoadPCB(filesGerber);
 
 	pcb.generate_mtl_file(strm_mtl);
-	std::ofstream file_mtl(mtlPath);
-	if (file_mtl.is_open()) {
-		file_mtl << strm_mtl.str();
-		file_mtl.close();
-	}
-
-
 	pcb.write_obj(strm_obj);
 
-	std::ofstream file_obj(objPath);
-	if (file_obj.is_open()) {
-		file_obj << "mtllib " << obj << "\n";
-		file_obj << strm_obj.str();
-		file_obj.close();
+	objData.push_back({ strm_mtl.str(), "output.mtl" });
+	objData.push_back({ strm_obj.str(), "output.obj" });
+
+	std::string gzipFileName = outputDir + "/output_files.gz";
+	createGzipFromVector(objData, gzipFileName);
+}
+
+int main(int argc, char* argv[]) {
+	if (argc < 3) {
+		std::cerr << "Usage: " << argv[0] << " <zipFilePath> <outputDir>" << std::endl;
+		return 1;
 	}
 
-	auto end5 = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds5 = end5 - end4;
+	processPCBFiles(argv[1], argv[2]);
 
-	std::cout
-		<< "obj: " << elapsed_seconds5.count() << "s"
-		<< std::endl;
+	generateMTLAndOBJFiles(argv[1], argv[2]);
 
-	auto end6 = std::chrono::system_clock::now();
-	std::chrono::duration<double> elapsed_seconds6 = end6 - start;
 
-	std::cout
-		<< "obj: " << elapsed_seconds6.count() << "s"
-		<< std::endl;
-	std::cout << "All task complited" << std::endl;
+	std::cout << "All tasks completed" << std::endl;
 
 	return 0;
 }
-
 

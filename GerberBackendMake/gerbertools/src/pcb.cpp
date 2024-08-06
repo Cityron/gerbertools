@@ -267,27 +267,36 @@ namespace gerbertools {
 		/**
 		 * Returns an open file input stream for the given filename.
 		 */
-		std::ifstream CircuitBoard::read_file(const std::string& fname) {
-			std::ifstream f(basename + fname);
-			if (!f.is_open()) {
-				throw std::runtime_error("file not found");
-			}
-			f.exceptions(std::ifstream::badbit);
-			return f;
+		std::istringstream CircuitBoard::read_file(const std::string& buffer) {
+			std::string str(buffer.begin(), buffer.end());
+			return std::istringstream(str);
 		}
 
 		/**
 		 * Reads a Gerber file.
 		 */
+		//coord::Paths CircuitBoard::read_gerber(const std::vector<char>& fname, bool outline) {
+		//	if (fname.empty()) {
+		//		return {};
+		//	}
+
+		//	std::string stringName;
+
+		//	auto lol = fname.at(0);
+
+		//	auto f = read_file(fname);
+		//	auto g = gerber::Gerber(f);
+		//	auto paths = outline ? g.get_outline_paths() : g.get_paths();
+		//	return paths;
+		//}
+
 		coord::Paths CircuitBoard::read_gerber(const std::string& fname, bool outline) {
 			if (fname.empty()) {
 				return {};
 			}
-			//std::cout << "reading Gerber file " << fname << "..." << std::endl;
-			auto f = read_file(fname);
+			auto f = std::istringstream(fname);
 			auto g = gerber::Gerber(f);
 			auto paths = outline ? g.get_outline_paths() : g.get_paths();
-			//std::cout << "finished reading " << fname << std::endl;
 			return paths;
 		}
 
@@ -321,6 +330,7 @@ namespace gerbertools {
 			vias.insert(vias.end(), new_vias.begin(), new_vias.end());
 		}
 
+
 		/**
 		 * Constructs a circuit board. The following files are to be specified:
 		 *  - basename: prefix for all filenames.
@@ -333,60 +343,61 @@ namespace gerbertools {
 		 *    Interpreted in the same way as outline.
 		 *  - plating_thickness: thickness of the hole plating in millimeters.
 		 */
+		//CircuitBoard::CircuitBoard(
+		//	const std::string& basename,
+		//	const std::string& outline,
+		//	const std::string& drill,
+		//	const std::string& drill_nonplated,
+		//	const std::string& mill,
+		//	double plating_thickness
+		//) : basename(basename), num_substrate_layers(0), plating_thickness(coord::Format::from_mm(plating_thickness)) {
+
+		//	// Load board outline.
+		//	board_outline = read_gerber(outline, true);
+		//	coord::Paths pth, npth;
+		//	//read_drill(mill, true, pth, npth);
+		//	path::append(board_outline, read_gerber(mill, true));
+
+		//	// Load drill files.
+
+		//	read_drill(drill, true, pth, npth);
+		//	if (!drill_nonplated.empty()) {
+		//		read_drill(drill_nonplated, false, pth, npth);
+		//	}
+
+		//	// Make board shape.
+		//	auto holes = path::add(pth, npth);
+		//	board_shape = path::subtract(board_outline, holes);
+		//	board_shape_excl_pth = path::subtract(board_outline, npth);
+
+		//	// Build plating.
+		//	coord::Paths pth_drill = path::offset(pth, this->plating_thickness, true);
+
+		//	// Make substrate shape.
+		//	substrate_dielectric = path::subtract(board_outline, path::add(pth_drill, npth));
+		//	substrate_plating = path::subtract(pth_drill, pth);
+
+		//}
+
 		CircuitBoard::CircuitBoard(
 			const std::string& basename,
-			const std::string& outline,
-			const std::string& drill,
-			const std::string& drill_nonplated,
-			const std::string& mill,
+			std::string& outline,
+			std::vector<std::string>& drill,
+			std::string& drill_nonplated,
+			std::string& mill,
 			double plating_thickness
-		) : basename(basename), num_substrate_layers(0), plating_thickness(coord::Format::from_mm(plating_thickness)) {
+		) : basename(basename), num_substrate_layers(0), plating_thickness(coord::Format::from_mm(0.5 * COPPER_OZ)){
 
-			// Load board outline.
-			board_outline = read_gerber(outline, true);
+			std::string outline_str(outline.begin(), outline.end());
+			board_outline = read_gerber(outline_str, true);
 			coord::Paths pth, npth;
-			//read_drill(mill, true, pth, npth);
-			path::append(board_outline, read_gerber(mill, true));
-
-			// Load drill files.
-
-			read_drill(drill, true, pth, npth);
-			if (!drill_nonplated.empty()) {
-				read_drill(drill_nonplated, false, pth, npth);
-			}
-
-			// Make board shape.
-			auto holes = path::add(pth, npth);
-			board_shape = path::subtract(board_outline, holes);
-			board_shape_excl_pth = path::subtract(board_outline, npth);
-
-			// Build plating.
-			coord::Paths pth_drill = path::offset(pth, this->plating_thickness, true);
-
-			// Make substrate shape.
-			substrate_dielectric = path::subtract(board_outline, path::add(pth_drill, npth));
-			substrate_plating = path::subtract(pth_drill, pth);
-
-		}
-
-		CircuitBoard::CircuitBoard(
-			const std::string& basename,
-			const std::string& outline,
-			const std::vector<std::string> drill,
-			const std::string& drill_nonplated,
-			const std::string& mill,
-			double plating_thickness
-		) : basename(basename), num_substrate_layers(0), plating_thickness(coord::Format::from_mm(plating_thickness)) {
-
-			board_outline = read_gerber(outline, true);
-			coord::Paths pth, npth;
-			path::append(board_outline, read_gerber(mill, true));
+			path::append(board_outline, read_gerber("", true));
 
 			for each (auto var in drill)
 			{
 				read_drill(var, true, pth, npth);
-				if (!drill_nonplated.empty()) {
-					read_drill(drill_nonplated, false, pth, npth);
+				if (drill_nonplated.empty()) {
+					read_drill(var, false, pth, npth);
 				}
 			}
 			auto holes = path::add(pth, npth);
@@ -403,7 +414,7 @@ namespace gerbertools {
 		/**
 		 * Adds a mask layer to the board. Layers are added bottom-up.
 		 */
-		void CircuitBoard::add_mask_layer(const std::string& mask, const std::string& silk) {
+		void CircuitBoard::add_mask_layer(std::string& mask, const std::string& silk) {
 			layers.push_back(std::make_shared<MaskLayer>(
 				"mask" + mask, board_outline, read_gerber(mask), read_gerber(silk), layers.empty()
 			));
@@ -412,7 +423,7 @@ namespace gerbertools {
 		/**
 		 * Adds a copper layer to the board. Layers are added bottom-up.
 		 */
-		void CircuitBoard::add_copper_layer(const std::string& gerber, double thickness) {
+		void CircuitBoard::add_copper_layer(std::string& gerber, double thickness) {
 			layers.push_back(std::make_shared<CopperLayer>(
 				"copper" + gerber, board_shape, board_shape_excl_pth, read_gerber(gerber), thickness
 			));
@@ -758,91 +769,75 @@ namespace gerbertools {
 			return files;
 		}
 
-		std::map<std::string, std::vector<std::string>> FileType::IdentifyGerberFiles(const std::string& directory) {
-			std::map<std::string, std::vector<std::string>> gerberFiles;
-			std::vector<std::string> files = ListFiles(directory);
+		std::map<std::string, std::vector<std::string>> FileType::IdentifyGerberFiles(std::vector<pcb::GerberFile>& files) {
 
+			std::map<std::string, std::vector<std::string>> charFiles;
 
-			for (const auto& file : files) {
-				BoardFileType gerber = BoardFileType::Unsupported;
-				std::ifstream f1(file);
-				pcb::FileType fileType;
-				gerber = fileType.FindFileTypeFromStream(f1, file);
-				if (BoardFileType::Gerber == gerber) {
+			for each (auto file in files)
+			{
+				if (BoardFileType::Gerber == file.getFileType()) {
 					BoardSide Side = BoardSide::Unknown;
 					BoardLayer Layer = BoardLayer::Unknown;
-					pcb::BoardSideAndLayer boardSideAndLayer(file, Side, Layer);
+					pcb::BoardSideAndLayer boardSideAndLayer(file.getFileName(), Side, Layer);
 					boardSideAndLayer.DetermineBoardSideAndLayer();
 					Side = boardSideAndLayer.getSide();
 					Layer = boardSideAndLayer.getLayer();
 
-					size_t pos = file.rfind('\\');
-					pos = file.rfind('\\', pos - 1);
-					std::string result = file.substr(pos);
-
 					if (BoardLayer::Copper == Layer && BoardSide::Top == Side) {
-						gerberFiles["topCopper"].push_back(result);
+						charFiles["topCopper"].push_back(file.getChar());
 					}
 					else if (BoardLayer::Copper == Layer && BoardSide::Bottom == Side) {
-						gerberFiles["bottomCopper"].push_back(result);
+						charFiles["bottomCopper"].push_back(file.getChar());
 					}
 					else if (BoardLayer::SolderMask == Layer && BoardSide::Top == Side) {
-						gerberFiles["topMask"].push_back(result);
+						charFiles["topMask"].push_back(file.getChar());
 					}
 					else if (BoardLayer::SolderMask == Layer && BoardSide::Bottom == Side) {
-						gerberFiles["bottomMask"].push_back(result);
+						charFiles["bottomMask"].push_back(file.getChar());
 					}
 					else if (BoardLayer::Silk == Layer && BoardSide::Top == Side) {
-						gerberFiles["topSilk"].push_back(result);
+						charFiles["topSilk"].push_back(file.getChar());
 					}
 					else if (BoardLayer::Silk == Layer && BoardSide::Bottom == Side) {
-						gerberFiles["bottomSilk"].push_back(result);
+						charFiles["bottomSilk"].push_back(file.getChar());
 					}
 					else if (BoardLayer::Drill == Layer && BoardSide::Both == Side) {
-						gerberFiles["drill"].push_back(result);
+						charFiles["drill"].push_back(file.getChar());
 					}
 					else if (BoardLayer::Mill == Layer && BoardSide::Both == Side) {
-						gerberFiles["mill"].push_back(result);
+						charFiles["mill"].push_back(file.getChar());
 					}
 					else if (BoardLayer::Outline == Layer && BoardSide::Both == Side) {
-						gerberFiles["outline"].push_back(result);
+						charFiles["outline"].push_back(file.getChar());
 					}
 				}
-				else if (BoardFileType::Drill == gerber) {
-					size_t pos = file.rfind('\\');
-					pos = file.rfind('\\', pos - 1);
-					std::string result = file.substr(pos);
-					gerberFiles["drill"].push_back(result);
-				}
-				f1.close();
-			}
-			return gerberFiles;
 
+				else if (BoardFileType::Drill == file.getFileType()) {
+					charFiles["drill"].push_back(file.getChar());
+
+				}
+			}
+
+			return charFiles;
 		}
 
-		CircuitBoard CircuitBoard::LoadPCB(const std::string& directory) {
-			auto start = std::chrono::system_clock::now();
+		CircuitBoard CircuitBoard::LoadPCB(std::vector<pcb::GerberFile>& files) {
 			FileType type;
 
-			std::cout
-				<< "elapsed time: " << start.max << "s"
-				<< std::endl;
-			auto gerberFiles = type.IdentifyGerberFiles(directory);
+				auto gerberFiles = type.IdentifyGerberFiles(files);
 			if (gerberFiles.empty()) {
 				throw std::runtime_error("No gerber file");
 			}
-			auto end = std::chrono::system_clock::now();
-			std::chrono::duration<double> elapsed_seconds1 = end - start;
 
-			std::cout
-				<< "elapsed time1: " << elapsed_seconds1.count() << "s"
-				<< std::endl;
 
-			std::string basename = directory;
+			std::string basename = "C:/Users/Программист/Desktop/outputdir";
 			std::string outline = gerberFiles["outline"].front();
-			std::vector<std::string> drill = gerberFiles["drill"];
-			std::string drill_nonplated = "";
-			std::string mill = "";
+			std::vector<std::string> drill= gerberFiles["drill"];
+
+			std::string drill_nonplated;
+			drill_nonplated.push_back('\0');
+			std::string mill;
+			mill.push_back('\0');
 			double plating_thickness = 0.5 * pcb::COPPER_OZ;
 
 			pcb::CircuitBoard board(basename, outline, drill, drill_nonplated, mill, plating_thickness);
@@ -850,17 +845,27 @@ namespace gerbertools {
 
 
 			if (!gerberFiles["bottomMask"].empty()) {
-				board.add_mask_layer(gerberFiles["bottomMask"].front(), gerberFiles["bottomSilk"].front());
+				auto bottomMask = gerberFiles["bottomMask"].front();
+				auto bottomSilk = gerberFiles["bottomSilk"].front();
+				board.add_mask_layer(bottomMask, bottomSilk);
 			}
+
 			if (!gerberFiles["bottomCopper"].empty()) {
-				board.add_copper_layer(gerberFiles["bottomCopper"].front(), pcb::COPPER_OZ);
+				auto bottomCopper = gerberFiles["bottomCopper"].front();
+				board.add_copper_layer(bottomCopper, pcb::COPPER_OZ);
 			}
+
 			board.add_substrate_layer(1.5);
+
 			if (!gerberFiles["topCopper"].empty()) {
-				board.add_copper_layer(gerberFiles["topCopper"].front(), pcb::COPPER_OZ);
+				auto topCopper = gerberFiles["topCopper"].front();
+				board.add_copper_layer(topCopper, pcb::COPPER_OZ);
 			}
+
 			if (!gerberFiles["topMask"].empty()) {
-				board.add_mask_layer(gerberFiles["topMask"].front(), gerberFiles["topSilk"].front());
+				auto topMask = gerberFiles["topMask"].front();
+				auto topSilk = gerberFiles["topSilk"].front();
+				board.add_mask_layer(topMask, topSilk);
 			}
 
 			board.add_surface_finish();
@@ -873,7 +878,8 @@ namespace gerbertools {
 		void BoardSideAndLayer::DetermineBoardSideAndLayer() {
 			Side = BoardSide::Unknown;
 			Layer = BoardLayer::Unknown;
-			std::string filename = Gerberfile.substr(Gerberfile.find_last_of("/\\") + 1);
+			std::string gerberfile(GerberFile.begin(), GerberFile.end());
+			std::string filename = gerberfile.substr(gerberfile.find_last_of("/\\") + 1);
 			std::string ext = filename.substr(filename.find_last_of('.') + 1);
 			std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
@@ -963,7 +969,9 @@ namespace gerbertools {
 					Layer = BoardLayer::Copper;
 				}
 				else {
-					std::string lcase = Gerberfile;
+					std::string gerberfile(GerberFile.begin(), GerberFile.end());
+
+					std::string lcase = gerberfile;
 					std::transform(lcase.begin(), lcase.end(), lcase.begin(), ::tolower);
 					if (lcase.find("board outline") != std::string::npos) { Side = BoardSide::Both; Layer = BoardLayer::Outline; }
 					if (lcase.find("copper bottom") != std::string::npos) { Side = BoardSide::Bottom; Layer = BoardLayer::Copper; }
@@ -986,7 +994,9 @@ namespace gerbertools {
 				}
 			}
 			else if (ext == "ger") {
-				std::string l = Gerberfile;
+				std::string gerberfileGer(GerberFile.begin(), GerberFile.end());
+
+				std::string l = gerberfileGer;
 				std::transform(l.begin(), l.end(), l.begin(), ::tolower);
 				std::vector<BoardSet> bs = {
 					{ ".topsoldermask", BoardSide::Top, BoardLayer::SolderMask },
@@ -1059,7 +1069,7 @@ namespace gerbertools {
 			}
 		}
 
-		BoardFileType FileType::FindFileTypeFromStream(std::ifstream& file, const std::string& filename) {
+		BoardFileType FileType::FindFileTypeFromStream(std::istream& file, const std::string& filename) {
 			std::string lower_filename = filename;
 			std::transform(lower_filename.begin(), lower_filename.end(), lower_filename.begin(), ::tolower);
 
