@@ -430,13 +430,13 @@ void ApertureMacro::append(const std::string &cmd) {
  * reported as a vector of strings. The first string is ignored; it is
  * assumed to be the name of the aperture macro.
  */
-aperture::Ref ApertureMacro::build(const std::vector<std::string> &csep, const coord::Format &fmt) {
+aperture::Ref ApertureMacro::build(const std::vector<std::string>& csep, const coord::Format& fmt) {
     Variables vars;
     for (size_t i = 1; i < csep.size(); i++) {
         vars[i] = std::stod(csep.at(i));
     }
     plot::Plot plot;
-    for (const auto &cmd : cmds) {
+    for (const auto& cmd : cmds) {
 
         // Handle variable assignment commands.
         if (cmd.size() == 2) {
@@ -448,326 +448,316 @@ aperture::Ref ApertureMacro::build(const std::vector<std::string> &csep, const c
         }
 
         // Handle draw commands.
-        // TODO: this is terrible design. Commands should be classes that
-        //  check the command syntax upon construction, and have a
-        //  polymorphic execute function. The actual rendering code is also
-        //  messy, but whatever, it works.
-        auto code = (size_t)std::round(cmd.at(0)->eval(vars));
+        auto code = static_cast<size_t>(std::round(cmd.at(0)->eval(vars)));
         switch (code) {
-            case 1: {
-
-                // Circle.
-                if (cmd.size() < 5 || cmd.size() > 6) {
-                    throw std::runtime_error("invalid circle command in aperture macro");
+        case 1: {
+            // Circle.
+            if (cmd.size() < 5 || cmd.size() > 6) {
+                throw std::runtime_error("invalid circle command in aperture macro");
+            }
+            bool exposure = cmd.at(1)->eval(vars) > 0.5;
+            double diameter = std::abs(static_cast<double>(cmd.at(2)->eval(vars)));
+            double center_x = static_cast<double>(cmd.at(3)->eval(vars));
+            double center_y = static_cast<double>(cmd.at(4)->eval(vars));
+            double rotation = (cmd.size() > 5) ? static_cast<double>(cmd.at(5)->eval(vars)) : 0.0;
+            auto paths = path::render({ {{
+                {
+                    fmt.to_fixed(center_x),
+                    fmt.to_fixed(center_y)
                 }
-                bool exposure = cmd.at(1)->eval(vars) > 0.5;
-                double diameter = std::abs(cmd.at(2)->eval(vars));
-                double center_x = cmd.at(3)->eval(vars);
-                double center_y = cmd.at(4)->eval(vars);
-                double rotation = (cmd.size() > 5) ? cmd.at(5)->eval(vars) : 0.0;
-                auto paths = path::render({{{
+            }} }, fmt.to_fixed(diameter), false, fmt.build_clipper_offset());
+            plot.draw_paths(
+                paths, exposure,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI
+            );
+            break;
+
+        }
+        case 20: {
+            // Vector line.
+            if (cmd.size() < 7 || cmd.size() > 8) {
+                throw std::runtime_error("invalid vector line command in aperture macro");
+            }
+            bool exposure = cmd.at(1)->eval(vars) > 0.5;
+            double width = std::abs(static_cast<double>(cmd.at(2)->eval(vars)));
+            double start_x = static_cast<double>(cmd.at(3)->eval(vars));
+            double start_y = static_cast<double>(cmd.at(4)->eval(vars));
+            double end_x = static_cast<double>(cmd.at(5)->eval(vars));
+            double end_y = static_cast<double>(cmd.at(6)->eval(vars));
+            double rotation = (cmd.size() > 7) ? static_cast<double>(cmd.at(7)->eval(vars)) : 0.0;
+            auto paths = path::render({ {{
+                {
+                    fmt.to_fixed(start_x),
+                    fmt.to_fixed(start_y)
+                }, {
+                    fmt.to_fixed(end_x),
+                    fmt.to_fixed(end_y)
+                }
+           }} }, fmt.to_fixed(width), true, fmt.build_clipper_offset());
+            plot.draw_paths(
+                paths, exposure,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI
+            );
+            break;
+
+        }
+        case 21: {
+            // Center line (aka rectangle...).
+            if (cmd.size() < 6 || cmd.size() > 7) {
+                throw std::runtime_error("invalid center line command in aperture macro");
+            }
+            bool exposure = cmd.at(1)->eval(vars) > 0.5;
+            double width = std::abs(static_cast<double>(cmd.at(2)->eval(vars)));
+            double height = std::abs(static_cast<double>(cmd.at(3)->eval(vars)));
+            double center_x = static_cast<double>(cmd.at(4)->eval(vars));
+            double center_y = static_cast<double>(cmd.at(5)->eval(vars));
+            double rotation = (cmd.size() > 6) ? static_cast<double>(cmd.at(6)->eval(vars)) : 0.0;
+            coord::Paths paths = { {
+                {
+                    fmt.to_fixed(center_x + width * 0.5),
+                    fmt.to_fixed(center_y + height * 0.5)
+                },
+                {
+                    fmt.to_fixed(center_x - width * 0.5),
+                    fmt.to_fixed(center_y + height * 0.5)
+                },
+                {
+                    fmt.to_fixed(center_x - width * 0.5),
+                    fmt.to_fixed(center_y - height * 0.5)
+                },
+                {
+                    fmt.to_fixed(center_x + width * 0.5),
+                    fmt.to_fixed(center_y - height * 0.5)
+                }
+            } };
+            plot.draw_paths(
+                paths, exposure,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI
+            );
+            break;
+
+        }
+        case 4: {
+            // Outline.
+            if (cmd.size() < 3) {
+                throw std::runtime_error("invalid outline command in aperture macro");
+            }
+            bool exposure = cmd.at(1)->eval(vars) > 0.5;
+            auto n_vertices = static_cast<size_t>(std::round(static_cast<double>(cmd.at(2)->eval(vars))));
+            size_t rotation_index = 5 + 2 * n_vertices;
+            if (n_vertices < 3 || cmd.size() < rotation_index || cmd.size() > rotation_index + 1) {
+                throw std::runtime_error("invalid outline command in aperture macro");
+            }
+            double rotation = (cmd.size() > rotation_index) ? static_cast<double>(cmd.at(rotation_index)->eval(vars)) : 0.0;
+            coord::Paths paths = { {} };
+            for (size_t i = 0; i < n_vertices; i++) {
+                paths.back().push_back({
+                    fmt.to_fixed(static_cast<double>(cmd.at(3 + 2 * i)->eval(vars))),
+                    fmt.to_fixed(static_cast<double>(cmd.at(4 + 2 * i)->eval(vars)))
+                    });
+            };
+            plot.draw_paths(
+                paths, exposure,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI, 1.0,
+                true, ClipperLib::pftNonZero
+            );
+            break;
+
+        }
+        case 5: {
+            // Polygon.
+            if (cmd.size() < 6 || cmd.size() > 7) {
+                throw std::runtime_error("invalid polygon command in aperture macro");
+            }
+            bool exposure = cmd.at(1)->eval(vars) > 0.5;
+            auto n_vertices = static_cast<size_t>(std::round(std::abs(static_cast<double>(cmd.at(2)->eval(vars)))));
+            double center_x = static_cast<double>(cmd.at(3)->eval(vars));
+            double center_y = static_cast<double>(cmd.at(4)->eval(vars));
+            double diameter = std::abs(static_cast<double>(cmd.at(5)->eval(vars)));
+            double rotation = (cmd.size() > 6) ? static_cast<double>(cmd.at(6)->eval(vars)) : 0.0;
+            coord::Paths ps = { {} };
+            for (size_t i = 0; i < n_vertices; i++) {
+                double a = ((double)i / (double)n_vertices) * 2.0 * M_PI;
+                ps.push_back({
+                    fmt.to_fixed(center_x + diameter * 0.5 * std::cos(a)),
+                    fmt.to_fixed(center_y + diameter * 0.5 * std::sin(a)) // Changed from std::cos to std::sin for the y-coordinate
+                    });
+            };
+            plot.draw_paths(
+                ps, exposure,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI
+            );
+            break;
+
+        }
+        case 6: {
+            // Moire.
+            if (cmd.size() < 9 || cmd.size() > 10) {
+                throw std::runtime_error("invalid moire command in aperture macro");
+            }
+            double center_x = static_cast<double>(cmd.at(1)->eval(vars));
+            double center_y = static_cast<double>(cmd.at(2)->eval(vars));
+            double diameter = std::abs(static_cast<double>(cmd.at(3)->eval(vars)));
+            double thickness = std::abs(static_cast<double>(cmd.at(4)->eval(vars)));
+            double gap = std::abs(static_cast<double>(cmd.at(5)->eval(vars)));
+            auto max_rings = static_cast<size_t>(std::round(std::abs(static_cast<double>(cmd.at(6)->eval(vars)))));
+            double ch_thickness = std::abs(static_cast<double>(cmd.at(7)->eval(vars)));
+            double ch_length = std::abs(static_cast<double>(cmd.at(8)->eval(vars)));
+            double rotation = (cmd.size() > 9) ? static_cast<double>(cmd.at(9)->eval(vars)) : 0.0;
+            coord::Paths paths = {};
+            for (size_t i = 0; i < max_rings * 2 && diameter > 0.0; i++) {
+                auto circle_paths = path::render({ {{
                     {
                         fmt.to_fixed(center_x),
                         fmt.to_fixed(center_y)
                     }
-                }}}, fmt.to_fixed(diameter), false, fmt.build_clipper_offset());
-                plot.draw_paths(
-                    paths, exposure,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI
-                );
-                break;
-
-            }
-            case 20: {
-
-                // Vector line.
-                if (cmd.size() < 7 || cmd.size() > 8) {
-                    throw std::runtime_error("invalid vector line command in aperture macro");
+                }} }, fmt.to_fixed(diameter), false, fmt.build_clipper_offset());
+                if (i & 1) {
+                    ClipperLib::ReversePaths(circle_paths);
+                    diameter -= gap * 2.0;
                 }
-                bool exposure = cmd.at(1)->eval(vars) > 0.5;
-                double width = std::abs(cmd.at(2)->eval(vars));
-                double start_x = cmd.at(3)->eval(vars);
-                double start_y = cmd.at(4)->eval(vars);
-                double end_x = cmd.at(5)->eval(vars);
-                double end_y = cmd.at(6)->eval(vars);
-                double rotation = (cmd.size() > 7) ? cmd.at(7)->eval(vars) : 0.0;
-                auto paths = path::render({{{
-                    {
-                        fmt.to_fixed(start_x),
-                        fmt.to_fixed(start_y)
-                    }, {
-                        fmt.to_fixed(end_x),
-                        fmt.to_fixed(end_y)
-                    }
-               }}}, fmt.to_fixed(width), true, fmt.build_clipper_offset());
-                plot.draw_paths(
-                    paths, exposure,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI
-                );
-                break;
-
-            }
-            case 21: {
-
-                // Center line (aka rectangle...).
-                if (cmd.size() < 6 || cmd.size() > 7) {
-                    throw std::runtime_error("invalid center line command in aperture macro");
+                else {
+                    diameter -= thickness * 2.0;
                 }
-                bool exposure = cmd.at(1)->eval(vars) > 0.5;
-                double width = std::abs(cmd.at(2)->eval(vars));
-                double height = std::abs(cmd.at(3)->eval(vars));
-                double center_x = cmd.at(4)->eval(vars);
-                double center_y = cmd.at(5)->eval(vars);
-                double rotation = (cmd.size() > 6) ? cmd.at(6)->eval(vars) : 0.0;
-                coord::Paths paths = {{
+                paths.insert(paths.end(), circle_paths.begin(), circle_paths.end());
+            };
+            if (ch_thickness > 0.0 && ch_length > 0.0) {
+                paths.push_back({
                     {
-                        fmt.to_fixed(center_x + width * 0.5),
-                        fmt.to_fixed(center_y + height * 0.5)
+                        fmt.to_fixed(center_x + ch_thickness * 0.5),
+                        fmt.to_fixed(center_y + ch_length * 0.5)
                     },
                     {
-                        fmt.to_fixed(center_x - width * 0.5),
-                        fmt.to_fixed(center_y + height * 0.5)
+                        fmt.to_fixed(center_x - ch_thickness * 0.5),
+                        fmt.to_fixed(center_y + ch_length * 0.5)
                     },
                     {
-                        fmt.to_fixed(center_x - width * 0.5),
-                        fmt.to_fixed(center_y - height * 0.5)
+                        fmt.to_fixed(center_x - ch_thickness * 0.5),
+                        fmt.to_fixed(center_y - ch_length * 0.5)
                     },
                     {
-                        fmt.to_fixed(center_x + width * 0.5),
-                        fmt.to_fixed(center_y - height * 0.5)
+                        fmt.to_fixed(center_x + ch_thickness * 0.5),
+                        fmt.to_fixed(center_y - ch_length * 0.5)
                     }
-                }};
-                plot.draw_paths(
-                    paths, exposure,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI
-                );
-                break;
-
-            }
-            case 4: {
-
-                // Outline.
-                if (cmd.size() < 3) {
-                    throw std::runtime_error("invalid outline command in aperture macro");
-                }
-                bool exposure = cmd.at(1)->eval(vars) > 0.5;
-                auto n_vertices = (size_t)std::round(cmd.at(2)->eval(vars));
-                size_t rotation_index = 5 + 2*n_vertices;
-                if (n_vertices < 3 || cmd.size() < rotation_index || cmd.size() > rotation_index + 1) {
-                    throw std::runtime_error("invalid outline command in aperture macro");
-                }
-                double rotation = (cmd.size() > rotation_index) ? cmd.at(rotation_index)->eval(vars) : 0.0;
-                coord::Paths paths = {{}};
-                for (size_t i = 0; i < n_vertices; i++) {
-                    paths.back().push_back({
-                        fmt.to_fixed(cmd.at(3 + 2*i)->eval(vars)),
-                        fmt.to_fixed(cmd.at(4 + 2*i)->eval(vars))
                     });
-                };
-                plot.draw_paths(
-                    paths, exposure,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI, 1.0,
-                    true, ClipperLib::pftNonZero
-                );
-                break;
-
-            }
-            case 5: {
-
-                // Polygon.
-                if (cmd.size() < 6 || cmd.size() > 7) {
-                    throw std::runtime_error("invalid polygon command in aperture macro");
-                }
-                bool exposure = cmd.at(1)->eval(vars) > 0.5;
-                auto n_vertices = (size_t)std::round(std::abs(cmd.at(2)->eval(vars)));
-                double center_x = cmd.at(3)->eval(vars);
-                double center_y = cmd.at(4)->eval(vars);
-                double diameter = std::abs(cmd.at(5)->eval(vars));
-                double rotation = (cmd.size() > 6) ? cmd.at(6)->eval(vars) : 0.0;
-                coord::Paths ps = {{}};
-                for (size_t i = 0; i < n_vertices; i++) {
-                    double a = ((double)i / (double)n_vertices) * 2.0 * M_PI;
-                    ps.push_back({
-                        fmt.to_fixed(center_x + diameter * 0.5 * std::cos(a)),
-                        fmt.to_fixed(center_y + diameter * 0.5 * std::cos(a))
-                    });
-                };
-                plot.draw_paths(
-                    ps, exposure,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI
-                );
-                break;
-
-            }
-            case 6: {
-
-                // Moire.
-                if (cmd.size() < 9 || cmd.size() > 10) {
-                    throw std::runtime_error("invalid moire command in aperture macro");
-                }
-                double center_x = cmd.at(1)->eval(vars);
-                double center_y = cmd.at(2)->eval(vars);
-                double diameter = std::abs(cmd.at(3)->eval(vars));
-                double thickness = std::abs(cmd.at(4)->eval(vars));
-                double gap = std::abs(cmd.at(5)->eval(vars));
-                auto max_rings = (size_t)std::round(std::abs(cmd.at(6)->eval(vars)));
-                double ch_thickness = std::abs(cmd.at(7)->eval(vars));
-                double ch_length = std::abs(cmd.at(8)->eval(vars));
-                double rotation = (cmd.size() > 9) ? cmd.at(9)->eval(vars) : 0.0;
-                coord::Paths paths = {};
-                for (size_t i = 0; i < max_rings*2 && diameter > 0.0; i++) {
-                    auto circle_paths = path::render({{{
-                        {
-                            fmt.to_fixed(center_x),
-                            fmt.to_fixed(center_y)
-                        }
-                    }}}, fmt.to_fixed(diameter), false, fmt.build_clipper_offset());
-                    if (i & 1) {
-                        ClipperLib::ReversePaths(circle_paths);
-                        diameter -= gap * 2.0;
-                    } else {
-                        diameter -= thickness * 2.0;
-                    }
-                    paths.insert(paths.end(), circle_paths.begin(), circle_paths.end());
-                };
-                if (ch_thickness > 0.0 && ch_length > 0.0) {
-                    paths.push_back({
-                        {
-                            fmt.to_fixed(center_x + ch_thickness * 0.5),
-                            fmt.to_fixed(center_y + ch_length * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - ch_thickness * 0.5),
-                            fmt.to_fixed(center_y + ch_length * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - ch_thickness * 0.5),
-                            fmt.to_fixed(center_y - ch_length * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x + ch_thickness * 0.5),
-                            fmt.to_fixed(center_y - ch_length * 0.5)
-                        }
-                    });
-                    paths.push_back({
-                        {
-                            fmt.to_fixed(center_x + ch_length * 0.5),
-                            fmt.to_fixed(center_y + ch_thickness * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - ch_length * 0.5),
-                            fmt.to_fixed(center_y + ch_thickness * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - ch_length * 0.5),
-                            fmt.to_fixed(center_y - ch_thickness * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x + ch_length * 0.5),
-                            fmt.to_fixed(center_y - ch_thickness * 0.5)
-                        }
-                    });
-                }
-                plot.draw_paths(
-                    paths, true,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI, 1.0,
-                    true, ClipperLib::pftPositive
-                );
-                break;
-
-            }
-            case 7: {
-
-                // Thermal.
-                if (cmd.size() < 6 || cmd.size() > 7) {
-                    throw std::runtime_error("invalid moire command in aperture macro");
-                }
-                double center_x = cmd.at(1)->eval(vars);
-                double center_y = cmd.at(2)->eval(vars);
-                double outer = std::abs(cmd.at(3)->eval(vars));
-                double inner = std::abs(cmd.at(4)->eval(vars));
-                double gap = std::abs(cmd.at(5)->eval(vars));
-                double rotation = (cmd.size() > 6) ? cmd.at(6)->eval(vars) : 0.0;
-
-                auto paths = path::render({{{
+                paths.push_back({
                     {
-                        fmt.to_fixed(center_x),
-                        fmt.to_fixed(center_y)
-                    }
-               }}}, fmt.to_fixed(outer), false, fmt.build_clipper_offset());
-
-                auto inner_paths = path::render({{{
+                        fmt.to_fixed(center_x + ch_length * 0.5),
+                        fmt.to_fixed(center_y + ch_thickness * 0.5)
+                    },
                     {
-                        fmt.to_fixed(center_x),
-                        fmt.to_fixed(center_y)
+                        fmt.to_fixed(center_x - ch_length * 0.5),
+                        fmt.to_fixed(center_y + ch_thickness * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x - ch_length * 0.5),
+                        fmt.to_fixed(center_y - ch_thickness * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x + ch_length * 0.5),
+                        fmt.to_fixed(center_y - ch_thickness * 0.5)
                     }
-                }}}, fmt.to_fixed(inner), false, fmt.build_clipper_offset());
-                ClipperLib::ReversePaths(inner_paths);
-                paths.insert(paths.end(), inner_paths.begin(), inner_paths.end());
+                    });
+            }
+            plot.draw_paths(
+                paths, true,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI, 1.0,
+                true, ClipperLib::pftPositive
+            );
+            break;
 
-                if (gap > 0.0) {
-                    paths.push_back({
-                        {
-                            fmt.to_fixed(center_x + gap * 0.5),
-                            fmt.to_fixed(center_y + outer * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x + gap * 0.5),
-                            fmt.to_fixed(center_y - outer * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - gap * 0.5),
-                            fmt.to_fixed(center_y - outer * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - gap * 0.5),
-                            fmt.to_fixed(center_y + outer * 0.5)
-                        }
-                    });
-                    paths.push_back({
-                        {
-                            fmt.to_fixed(center_x + outer * 0.5),
-                            fmt.to_fixed(center_y + gap * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x + outer * 0.5),
-                            fmt.to_fixed(center_y - gap * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - outer * 0.5),
-                            fmt.to_fixed(center_y - gap * 0.5)
-                        },
-                        {
-                            fmt.to_fixed(center_x - outer * 0.5),
-                            fmt.to_fixed(center_y + gap * 0.5)
-                        }
-                    });
+        }
+        case 7: {
+            // Thermal.
+            if (cmd.size() < 6 || cmd.size() > 7) {
+                throw std::runtime_error("invalid thermal command in aperture macro");
+            }
+            double center_x = static_cast<double>(cmd.at(1)->eval(vars));
+            double center_y = static_cast<double>(cmd.at(2)->eval(vars));
+            double outer = std::abs(static_cast<double>(cmd.at(3)->eval(vars)));
+            double inner = std::abs(static_cast<double>(cmd.at(4)->eval(vars)));
+            double gap = std::abs(static_cast<double>(cmd.at(5)->eval(vars)));
+            double rotation = (cmd.size() > 6) ? static_cast<double>(cmd.at(6)->eval(vars)) : 0.0;
+
+            auto paths = path::render({ {{
+                {
+                    fmt.to_fixed(center_x),
+                    fmt.to_fixed(center_y)
                 }
-                plot.draw_paths(
-                    paths, true,
-                    0, 0,
-                    false, false,
-                    rotation / 180.0 * M_PI, 1.0,
-                    true, ClipperLib::pftPositive
-                );
-                break;
+           }} }, fmt.to_fixed(outer), false, fmt.build_clipper_offset());
 
+            auto inner_paths = path::render({ {{
+                {
+                    fmt.to_fixed(center_x),
+                    fmt.to_fixed(center_y)
+                }
+            }} }, fmt.to_fixed(inner), false, fmt.build_clipper_offset());
+            ClipperLib::ReversePaths(inner_paths);
+            paths.insert(paths.end(), inner_paths.begin(), inner_paths.end());
+
+            if (gap > 0.0) {
+                paths.push_back({
+                    {
+                        fmt.to_fixed(center_x + gap * 0.5),
+                        fmt.to_fixed(center_y + outer * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x + gap * 0.5),
+                        fmt.to_fixed(center_y - outer * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x - gap * 0.5),
+                        fmt.to_fixed(center_y - outer * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x - gap * 0.5),
+                        fmt.to_fixed(center_y + outer * 0.5)
+                    }
+                    });
+                paths.push_back({
+                    {
+                        fmt.to_fixed(center_x + outer * 0.5),
+                        fmt.to_fixed(center_y + gap * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x + outer * 0.5),
+                        fmt.to_fixed(center_y - gap * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x - outer * 0.5),
+                        fmt.to_fixed(center_y - gap * 0.5)
+                    },
+                    {
+                        fmt.to_fixed(center_x - outer * 0.5),
+                        fmt.to_fixed(center_y + gap * 0.5)
+                    }
+                    });
             }
-            default: {
-                throw std::runtime_error("invalid aperture macro primitive code");
-            }
+            plot.draw_paths(
+                paths, true,
+                0, 0,
+                false, false,
+                rotation / 180.0 * M_PI, 1.0,
+                true, ClipperLib::pftPositive
+            );
+            break;
+
+        }
+        default: {
+            throw std::runtime_error("invalid aperture macro primitive code");
+        }
 
         }
 

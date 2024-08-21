@@ -21,13 +21,18 @@ public class AuthService : IAuthService
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IConfiguration _configuration;
     private readonly UserStoreCustom _userStoreCustom;
+    private readonly ISessionStore _sessionStore;
+    private readonly Contracts.ILogger _logger;
 
-    public AuthService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration, UserStoreCustom userStoreCustom)
+    public AuthService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, 
+        IConfiguration configuration, UserStoreCustom userStoreCustom, ISessionStore store, Contracts.ILogger logger)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _configuration = configuration;
         _userStoreCustom = userStoreCustom;
+        _sessionStore = store;
+        _logger = logger;
     }
 
     public async Task<GeneralServiceResponseDto> SeedRolesAsync()
@@ -103,6 +108,8 @@ public class AuthService : IAuthService
                 errorString += " #" + error.Description;
             }
 
+            await _logger.LogErrorServerAsync(errorString);
+
             return new GeneralServiceResponseDto()
             {
                 IsSucced = false,
@@ -114,6 +121,8 @@ public class AuthService : IAuthService
 
 
         await _userManager.AddToRoleAsync(newUser, StaticUserRoles.Owner);
+
+        await _logger.LogUserActionAsync(newUser.Id, $"{newUser.UserName} успешно зарегистрирован");
 
         return new GeneralServiceResponseDto()
         {
@@ -138,6 +147,8 @@ public class AuthService : IAuthService
         var newToken = await GenerateJWTTokenAsync(user);
         var roles = await _userManager.GetRolesAsync(user);
         var userInfo = GenerateUserInfoObject(user, roles);
+
+        await _logger.LogUserActionAsync(user.UserName, "Выполнил вход");
 
         return new LoginServiceResponseDto()
         {
@@ -177,6 +188,7 @@ public class AuthService : IAuthService
                 {
                     await _userManager.RemoveFromRolesAsync(user, userRoles);
                     await _userManager.AddToRoleAsync(user, updateRoleDto.NewRole.ToString());
+                    await _logger.LogUserActionAsync(null, "Роли успешно обновлены");
                     return new GeneralServiceResponseDto()
                     {
                         IsSucced = true,
@@ -220,36 +232,114 @@ public class AuthService : IAuthService
 
         }
     }
-
     public async Task<LoginServiceResponseDto> MeAsync(MeDto meDto)
     {
-        ClaimsPrincipal handler = new JwtSecurityTokenHandler().ValidateToken(meDto.Token, new TokenValidationParameters()
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
             ValidIssuer = _configuration["JWT:ValidIssuer"],
             ValidAudience = _configuration["JWT:ValidAudience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Key"]))
-        }, out SecurityToken securityToken);
-
-        string decodedUserName = handler.Claims.First(q => q.Type == ClaimTypes.Name).Value;
-        if (decodedUserName is null)
-            return null;
-
-        var user = await _userManager.FindByNameAsync(decodedUserName);
-        if (user is null)
-            return null;
-
-        var newToken = await GenerateJWTTokenAsync(user);
-        var roles = await _userManager.GetRolesAsync(user);
-        var userInfo = GenerateUserInfoObject(user, roles);
-
-        return new LoginServiceResponseDto()
-        {
-            NewToken = newToken,
-            UserInfo = userInfo,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Key"])),
+            ClockSkew = TimeSpan.Zero
         };
 
+        try
+        {
+            var handler = tokenHandler.ValidateToken(meDto.Token, validationParameters, out SecurityToken securityToken);
+
+            var decodedUserName = handler.Claims.FirstOrDefault(q => q.Type == ClaimTypes.Name)?.Value;
+            if (string.IsNullOrEmpty(decodedUserName))
+                return null;
+
+            var user = await _userManager.FindByNameAsync(decodedUserName);
+            if (user == null)
+                return null;
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var userInfo = GenerateUserInfoObject(user, roles);
+
+            var decodedSession = handler.Claims.FirstOrDefault(q => q.Type == CustomClaimTypes.SessionId)?.Value;
+
+            var session = _sessionStore.IsValidSession(Guid.Parse(decodedSession));
+
+            if (session is SessionData)
+            {
+                return new LoginServiceResponseDto
+                {
+                    NewToken = meDto.Token,
+                    UserInfo = userInfo
+                };
+            }
+            else
+            {
+                var newToken = await GenerateJWTTokenAsync(user);
+
+                return new LoginServiceResponseDto
+                {
+                    NewToken = newToken,
+                    UserInfo = userInfo
+                };
+            }
+        }
+        catch (SecurityTokenExpiredException)
+        {
+            var handler = new JwtSecurityTokenHandler().ReadJwtToken(meDto.Token);
+            var decodedUserName = handler.Claims.FirstOrDefault(q => q.Type == ClaimTypes.Name)?.Value;
+
+            if (string.IsNullOrEmpty(decodedUserName))
+                return null;
+
+            var user = await _userManager.FindByNameAsync(decodedUserName);
+            if (user == null)
+                return null;
+
+            var newToken = await GenerateJWTTokenAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+            var userInfo = GenerateUserInfoObject(user, roles);
+
+            return new LoginServiceResponseDto
+            {
+                NewToken = newToken,
+                UserInfo = userInfo
+            };
+        }
+        catch (SecurityTokenInvalidSignatureException)
+        {
+            var handler = new JwtSecurityTokenHandler().ReadJwtToken(meDto.Token);
+            var decodedUserId = handler.Claims.FirstOrDefault(q => q.Type == CustomClaimTypes.Id)?.Value;
+            await _logger.LogErrorServerAsync("Недействительный токен", decodedUserId);
+            return null;
+        }
+        catch (SecurityTokenInvalidAudienceException)
+        {
+            var handler = new JwtSecurityTokenHandler().ReadJwtToken(meDto.Token);
+            var decodedUserId = handler.Claims.FirstOrDefault(q => q.Type == CustomClaimTypes.Id)?.Value;
+            await _logger.LogErrorServerAsync("Недействительный токен", decodedUserId);
+            return null;
+        }
+        catch (SecurityTokenInvalidIssuerException)
+        {
+            var handler = new JwtSecurityTokenHandler().ReadJwtToken(meDto.Token);
+            var decodedUserId = handler.Claims.FirstOrDefault(q => q.Type == CustomClaimTypes.Id)?.Value;
+            await _logger.LogErrorServerAsync("Недействительный токен", decodedUserId);
+            return null;
+        }
+        catch (SecurityTokenException)
+        {
+            var handler = new JwtSecurityTokenHandler().ReadJwtToken(meDto.Token);
+            var decodedUserId = handler.Claims.FirstOrDefault(q => q.Type == CustomClaimTypes.Id)?.Value;
+            await _logger.LogErrorServerAsync("Недействительный токен", decodedUserId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorServerAsync($"An error occurred: {ex.Message}");
+            return null;
+        }
     }
 
     public async Task<IEnumerable<UserInfoResult>> GetUsersListAsync()
@@ -291,12 +381,15 @@ public class AuthService : IAuthService
     {
         var userRoles = await _userManager.GetRolesAsync(user);
 
+        var sessionStore = _sessionStore.GetSession(Guid.NewGuid());
+
         var authClaims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, user.UserName),
             new Claim(CustomClaimTypes.Id, user.Id),
             new Claim("FirstName", user.FirstName),
             new Claim("LastName", user.LastName),
+            new Claim(CustomClaimTypes.SessionId, sessionStore.SessionId.ToString())
         };
 
         foreach (var userRole in userRoles)

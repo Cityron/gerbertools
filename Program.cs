@@ -1,8 +1,13 @@
+using GerberBackend.Contracts;
 using GerberBackend.Core.Contracts;
 using GerberBackend.Core.DbContext;
 using GerberBackend.Core.Entities.Auth;
 using GerberBackend.Core.Entities.UserStoreCustom;
+using GerberBackend.Core.MongoDB;
 using GerberBackend.Core.Services;
+using GerberBackend.Core.Session;
+using GerberBackend.Utils;
+using GerberGenerate.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -10,12 +15,15 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using GerberGenerate.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddHttpClient();
 
 builder.Services.AddSwaggerGen(option =>
 {
@@ -94,7 +102,11 @@ builder.Services
     });
 
 builder.Services.AddTransient<IAuthService, AuthService>();
+builder.Services.AddTransient<IPullData, PullData>();
 builder.Services.AddTransient<UserStoreCustom>();
+builder.Services.AddTransient<IGzipData, GZipData>();
+builder.Services.AddSingleton<ISessionStore, MemorySessionStore>();
+builder.Services.AddTransient<GerberBackend.Core.Contracts.ILogger, LoggerService>();
 
 var app = builder.Build();
 
@@ -121,6 +133,7 @@ app.MapControllers();
 try
 {
     DbInitializer.InitDb(app);
+    await DBMongoInitializer.InitDb(app);
 }
 catch (Exception e)
 {

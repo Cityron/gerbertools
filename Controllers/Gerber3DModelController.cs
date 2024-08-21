@@ -1,5 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using GerberBackend.Config;
+using GerberBackend.Contracts;
+using GerberBackend.Core.Contracts;
+using GerberBackend.Utils;
+using GerberGenerate.Contracts;
+using GerberGenerate.Utils;
 using Microsoft.AspNetCore.Mvc;
+using ILogger = GerberBackend.Core.Contracts.ILogger;
 
 namespace GerberBackend.Controllers
 {
@@ -7,45 +13,101 @@ namespace GerberBackend.Controllers
     [ApiController]
     public class Gerber3DModelController : ControllerBase
     {
-        [HttpPost("get-model")]
-        [Authorize]
-        public async Task<IActionResult> Generate3DModel(IFormFile file)
+        private readonly IPullData _data;
+        private readonly IGzipData _gzip;
+        private IHttpContextAccessor _httpContextAccessor;
+        private readonly ISessionStore _sessionStore;
+        private readonly ILogger _logger;
+
+        private readonly SessionToken _token = new();
+        public Gerber3DModelController(IPullData data, IGzipData gzip, IHttpContextAccessor httpContextAccessor, ISessionStore store, ILogger loger)
         {
-            if (file == null || file.Length == 0)
-            {
-                return BadRequest("No file uploaded.");
-            }
+            _data = data;
+            _gzip = gzip;
+            _httpContextAccessor = httpContextAccessor;
+            _sessionStore = store;
+            _logger = loger;
+        }
 
-            var gltfFilePath = Path.Combine(Environment.CurrentDirectory, "output.gltf");
-            var binFilePath = Path.Combine(Environment.CurrentDirectory, "output.bin");
-            var png1File = Path.Combine(Environment.CurrentDirectory, "png.png");
-            var png2File = Path.Combine(Environment.CurrentDirectory, "png.png");
+        [HttpPost("get-svg")]
+        public async Task<IActionResult> GenerateSvg(IFormFile file)
+        {
 
-            if (!System.IO.File.Exists(gltfFilePath) || !System.IO.File.Exists(binFilePath))
-            {
-                return NotFound("File not found.");
-            }
+            GerberStats stats = new GerberStats(file, _data);
 
-            var gltfBase64 = Convert.ToBase64String(await System.IO.File.ReadAllBytesAsync(gltfFilePath));
-            var binBase64 = Convert.ToBase64String(await System.IO.File.ReadAllBytesAsync(binFilePath));
-            var png1Base64 = Convert.ToBase64String(await System.IO.File.ReadAllBytesAsync(png1File));
-            var png2Base64 = Convert.ToBase64String(await System.IO.File.ReadAllBytesAsync(png2File));
-            var classt = 11;
-            var SizeX = 99;
-            var SizeY = 99;
+            if (file == null)
+                return BadRequest();
 
-            var result = new
-            {
-                gltfFile = gltfBase64,
-                binFile = binBase64,
-                png1File = png1Base64,
-                png2File = png2Base64,
-                classt = classt,
-                SizeX = SizeX,
-                SizeY = SizeY
-            };
+            var fileName = file.FileName;
 
-            return Ok(result);
+            var fileExtension = Path.GetExtension(fileName);
+
+            if (fileExtension != ".zip")
+                return BadRequest();
+
+            var authHeader = _httpContextAccessor.HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+
+            var httpContext = _httpContextAccessor.HttpContext;
+
+            var user = httpContext.User;
+
+            string sessionId = _token.GetSessionIdFromToken(authHeader);
+
+
+            (string frontSvg, string backSvg) obj;
+
+            (byte[] frontSvgGzip, byte[] backSvgGzip) svgGzip;
+
+            stats.InitializationFiles();
+
+            stats.GenerateResultFile();
+
+            //obj = PInvokeWrapper.CallProcessPCBFiles(files); 
+
+            //svgGzip.frontSvgGzip = _gzip.CompressString(obj.frontSvg);
+
+            //svgGzip.backSvgGzip = _gzip.CompressString(obj.backSvg);
+
+            GC.Collect();
+
+
+
+            //if (sessionId != null) {
+            //    var files1 = new Files();
+            //    files1.files = svgGzip;
+            //    _sessionStore.AddFiles(Guid.Parse(sessionId), files1);
+            //    await _logger.LogUserActionAsync(user.FindFirst(CustomClaimTypes.Id)?.Value, "Сгенерировал данные");
+            //} else
+            //{
+            //   await _logger.LogUserActionAsync(null, "Сгенерировал данные");
+            //}
+
+            return Ok();
+        }
+
+        [HttpPost("get-model")]
+        public IActionResult GenerateObj(IFormFile file)
+        {
+            var authHeader = _httpContextAccessor.HttpContext.Request.Headers["Authorization"].FirstOrDefault();
+
+            string sessionId = _token.GetSessionIdFromToken(authHeader);
+
+
+            (string mtl, string objModel) obj;
+
+            (byte[] mtlGzip, byte[] objGzip) objGzip;
+
+            var files = _data.getZipFiles(file);
+
+            //obj = PInvokeWrapper.CallGenerateMTLAndOBJFiles(files);
+
+            //objGzip.mtlGzip = _gzip.CompressString(obj.mtl);
+
+            //objGzip.objGzip = _gzip.CompressString(obj.objModel);
+
+            GC.Collect();
+
+            return Ok();
         }
     }
 }

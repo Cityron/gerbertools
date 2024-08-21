@@ -107,21 +107,19 @@ void NCDrill::add_arc(
     coord::CInt radius,
     bool ccw
 ) {
+    double x0 = static_cast<double>(start.X);
+    double y0 = static_cast<double>(start.Y);
+    double x1 = static_cast<double>(end.X);
+    double y1 = static_cast<double>(end.Y);
+    double r = static_cast<double>(radius); 
 
-    // Convert to double for the math.
-    double x0 = start.X;
-    double y0 = start.Y;
-    double x1 = end.X;
-    double y1 = end.Y;
-    double r = radius;
-
-    // Find the center.
     // https://math.stackexchange.com/a/88067
     double d = std::hypot(x0 - x1, y0 - y1);
     double e = 2.0 * r / d;
     if (e < 1.0) {
         e = 0.0;
-    } else {
+    }
+    else {
         e *= e;
         e = std::sqrt(e - 1.0);
     }
@@ -133,35 +131,33 @@ void NCDrill::add_arc(
     double xc = ax + ay * e;
     double yc = ay - ax * e;
 
-    // Find the start and end angle.
     double a0 = std::atan2(y0 - yc, x0 - xc);
     double a1 = std::atan2(y1 - yc, x1 - xc);
     if (ccw) {
         if (a1 < a0) {
             a1 += 2.0 * M_PI;
         }
-    } else {
+    }
+    else {
         if (a0 < a1) {
             a0 += 2.0 * M_PI;
         }
     }
 
-    // Find the number of vertices we need to make.
     double epsilon = fmt.get_max_deviation();
     double f = (r > epsilon) ? (1.0 - epsilon / r) : 0.0;
     double th = std::acos(2.0 * f * f - 1.0) + 1e-3;
-    auto n_vertices = (size_t)std::ceil(std::abs(a1 - a0) / th);
+    auto n_vertices = static_cast<size_t>(std::ceil(std::abs(a1 - a0) / th));
 
     // Actually add the path.
     for (size_t i = 1; i <= n_vertices; i++) {
-        double f1 = (double)i / (double)n_vertices;
+        double f1 = static_cast<double>(i) / static_cast<double>(n_vertices);
         double f0 = 1.0 - f1;
-        double va = f0*a0 + f1*a1;
+        double va = f0 * a0 + f1 * a1;
         double vx = xc + r * std::cos(va);
         double vy = yc + r * std::sin(va);
-        path.push_back({(coord::CInt)std::round(vx), (coord::CInt)std::round(vy)});
+        path.push_back({ static_cast<coord::CInt>(std::round(vx)), static_cast<coord::CInt>(std::round(vy)) });
     }
-
 }
 
 /**

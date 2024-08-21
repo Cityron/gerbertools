@@ -38,7 +38,6 @@
 #include "obj.hpp"
 #include "netlist.hpp"
 #include "ncdrill.hpp"
-#include "../src/BoardEnumTypes.h"
 
 namespace gerbertools {
 
@@ -328,45 +327,6 @@ namespace gerbertools {
 
 		};
 
-		class BoardSideAndLayer {
-		private:
-			std::string GerberFile;
-			BoardSide Side;
-			BoardLayer Layer;
-
-		public:
-			BoardSideAndLayer(std::string gerberfile, BoardSide side, BoardLayer layer)
-				: GerberFile(gerberfile), Side(side), Layer(layer) {}
-
-			void DetermineBoardSideAndLayer();
-			BoardSide getSide() const { return Side; }
-			BoardLayer getLayer() const { return Layer; }
-
-			~BoardSideAndLayer() {}
-		};
-
-		class GerberFile {
-		private:
-			std::string fileName;
-			std::string file;
-			BoardFileType type;
-
-		public:
-			GerberFile(std::string fileName,
-				std::string file,
-				BoardFileType type) : fileName(fileName), file(file), type(type) {}
-
-			BoardFileType getFileType() const { return type; };
-			std::string getChar() const { return file; }
-			std::string getFileName() const {return fileName;}
-		};
-
-		class FileType {
-		public:
-			BoardFileType FileType::FindFileTypeFromStream(std::istream& file, const std::string& filename);
-			std::map<std::string, std::vector<std::string>> IdentifyGerberFiles(std::vector<pcb::GerberFile>& files);
-		};
-
 		/**
 		 * Represents a circuit board.
 		 */
@@ -376,7 +336,6 @@ namespace gerbertools {
 			/**
 			 * Prefix for all filenames.
 			 */
-			std::string basename;
 
 			/**
 			 * The board outline, without removal of holes.
@@ -475,7 +434,6 @@ namespace gerbertools {
 			//);
 
 			CircuitBoard(
-				const std::string& basename,
 				std::string& outline,
 				std::vector<std::string>& drill,
 				std::string& drill_nonplated,
@@ -483,7 +441,7 @@ namespace gerbertools {
 				double plating_thickness = 0.5 * COPPER_OZ
 			);
 
-			static CircuitBoard LoadPCB(std::vector<pcb::GerberFile>& files);
+			static CircuitBoard LoadPCB(std::map<std::string, std::vector<std::string>>& files);
 
 			/**
 			 * Adds a mask layer to the board. Layers are added bottom-up.

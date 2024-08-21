@@ -535,10 +535,17 @@ Netlist NetlistBuilder::build(coord::CInt clearance) {
  * segment.
  */
 static double point_to_line_distance_sqr(coord::CPt point, coord::CPt a, coord::CPt b) {
-    double A = point.X - a.X;
-    double B = point.X - a.Y;
-    double C = b.X - a.X;
-    double D = b.Y - a.Y;
+    double ax = static_cast<double>(a.X);
+    double ay = static_cast<double>(a.Y);
+    double bx = static_cast<double>(b.X);
+    double by = static_cast<double>(b.Y);
+    double px = static_cast<double>(point.X);
+    double py = static_cast<double>(point.Y);
+
+    double A = px - ax;
+    double B = py - ay;
+    double C = bx - ax;
+    double D = by - ay;
 
     double dot = A * C + B * D;
     double len_sq = C * C + D * D;
@@ -546,19 +553,21 @@ static double point_to_line_distance_sqr(coord::CPt point, coord::CPt a, coord::
 
     double xx, yy;
 
-    if (param < 0 || (a.X == b.X && a.Y == b.Y)) {
-        xx = a.X;
-        yy = a.Y;
-    } else if (param > 1) {
-        xx = b.X;
-        yy = b.Y;
-    } else {
-        xx = a.X + param * C;
-        yy = a.Y + param * D;
+    if (param < 0 || (ax == bx && ay == by)) {
+        xx = ax;
+        yy = ay;
+    }
+    else if (param > 1) {
+        xx = bx;
+        yy = by;
+    }
+    else {
+        xx = ax + param * C;
+        yy = ay + param * D;
     }
 
-    double dx = point.X - xx;
-    double dy = point.Y - yy;
+    double dx = px - xx;
+    double dy = py - yy;
 
     return dx * dx + dy * dy;
 }
